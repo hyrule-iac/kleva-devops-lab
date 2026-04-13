@@ -1,22 +1,127 @@
-# ConfigMap pre-configures Grafana with Prometheus as datasource
-# No manual setup needed after deploy
+# ============================
+# 1. Datasource: Prometheus
+# ============================
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-datasource
   namespace: monitoring
+  labels:
+    grafana_datasource: "1"
 data:
   datasource.yaml: |
     apiVersion: 1
     datasources:
       - name: Prometheus
         type: prometheus
-        # Uses Kubernetes internal DNS to reach Prometheus service
         url: http://prometheus-svc.monitoring.svc.cluster.local:9090
+        access: proxy
         isDefault: true
         editable: false
 ---
-# Deployment runs the Grafana server
+# ============================
+# 2. Dashboard Provider
+# ============================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+  namespace: monitoring
+data:
+  provider.yaml: |
+    apiVersion: 1
+    providers:
+      - name: 'kleva-provider'
+        orgId: 1
+        folder: 'Kleva'
+        type: file
+        disableDeletion: false
+        editable: true
+        allowUiUpdates: true
+        updateIntervalSeconds: 10
+        foldersFromFilesStructure: true
+        options:
+          # ✔ ESTA RUTA ESTÁ CORRECTA
+          # Grafana 10.4 carga dashboards desde /var/lib/grafana/dashboards
+          path: /var/lib/grafana/dashboards/kleva
+---
+# ============================
+# 3. Dashboard JSON
+# ============================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard
+  namespace: monitoring
+data:
+  kleva.json: |
+    {
+      "title": "Kleva App",
+      "uid": "kleva-app",
+      "schemaVersion": 38,
+      "version": 1,
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Total requests",
+          "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+          "targets": [
+            {
+              "expr": "sum(kleva_http_requests_total)",
+              "legendFormat": "requests"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Uptime (seconds)",
+          "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+          "targets": [
+            {
+              "expr": "kleva_uptime_seconds",
+              "legendFormat": "uptime"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Request rate (req/sec)",
+          "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+          "targets": [
+            {
+              "expr": "rate(kleva_http_requests_total[1m])",
+              "legendFormat": "{{ endpoint }}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Request duration p95 (seconds)",
+          "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, rate(kleva_http_request_duration_seconds_bucket[1m]))",
+              "legendFormat": "p95 {{ endpoint }}"
+            }
+          ]
+        },
+        {
+          "type": "gauge",
+          "title": "Active requests",
+          "gridPos": { "x": 0, "y": 20, "w": 6, "h": 4 },
+          "targets": [
+            {
+              "expr": "kleva_active_requests",
+              "legendFormat": "active"
+            }
+          ]
+        }
+      ]
+    }
+---
+# ============================
+# 4. Grafana Deployment (CORREGIDO)
+# ============================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -38,47 +143,29 @@ spec:
           ports:
             - containerPort: 3000
           env:
-            # Default admin credentials — change in production
             - name: GF_SECURITY_ADMIN_USER
               value: "admin"
             - name: GF_SECURITY_ADMIN_PASSWORD
-              value: "kleva2024"
-            # Disable login form for lab demo purposes
-            - name: GF_AUTH_ANONYMOUS_ENABLED
-              value: "true"
-            - name: GF_AUTH_ANONYMOUS_ORG_ROLE
-              value: "Viewer"
+              value: "admin"
           volumeMounts:
-            - name: datasource
+            - name: grafana-datasource
               mountPath: /etc/grafana/provisioning/datasources
-            - name: storage
-              mountPath: /var/lib/grafana
-          resources:
-            requests:
-              memory: "128Mi"
-              cpu: "100m"
-            limits:
-              memory: "256Mi"
-              cpu: "300m"
+            - name: grafana-dashboard-provider
+              mountPath: /etc/grafana/provisioning/dashboards
+
+            # ❗ CAMBIO IMPORTANTE AQUÍ
+            # Antes: /etc/grafana/provisioning/dashboards/kleva  ❌
+            # Ahora: /var/lib/grafana/dashboards/kleva          ✔
+            - name: grafana-dashboard
+              mountPath: /var/lib/grafana/dashboards/kleva
+              # ← ESTE ES EL FIX QUE FALTABA
       volumes:
-        # Auto-provisions Prometheus as datasource on first boot
-        - name: datasource
+        - name: grafana-datasource
           configMap:
             name: grafana-datasource
-        - name: storage
-          emptyDir: {}
----
-# Service exposes Grafana dashboard via NodePort
-apiVersion: v1
-kind: Service
-metadata:
-  name: grafana-svc
-  namespace: monitoring
-spec:
-  selector:
-    app: grafana
-  ports:
-    - port: 3000
-      targetPort: 3000
-      nodePort: 30030
-  type: NodePort
+        - name: grafana-dashboard-provider
+          configMap:
+            name: grafana-dashboard-provider
+        - name: grafana-dashboard
+          configMap:
+            name: grafana-dashboard
