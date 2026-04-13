@@ -6,7 +6,8 @@
 [![IaC: Terraform](https://img.shields.io/badge/IaC-Terraform%20HCP-blueviolet)](https://www.terraform.io/)
 
 ## 📖 Overview
-This repository serves as a **Senior-level DevSecOps Reference Architecture**. It demonstrates a fully automated, secure, and observable lifecycle for a .NET 8 Cloud-Native application. 
+This repository serves as a **DevSecOps Reference Architecture**. 
+It demonstrates a fully automated, secure, and observable lifecycle for a .NET 10 Cloud-Native application. 
 The project goes beyond simple deployment, implementing **Blue-Green strategies**, **Shift-Left security**, and **Remote State management** using industry-standard tooling.
 
 ---
