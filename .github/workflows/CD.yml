@@ -29,17 +29,17 @@ jobs:
 
       - name: Apply Kubernetes Manifests
         run: |
-          # 1. Aplicamos los namespaces primero
+          # 1. Apply namespaces first
           kubectl apply -f k8s/namespace.yaml
           
-          # 2. Un pequeño respiro de 5 segundos para que el API Server se asiente
+          # 2. Sleep wait for 5 seconds to ensure namespaces are created before applying other resources
           sleep 5
           
-          # 3. Aplicamos TODO el directorio k8s. 
-          # Kubernetes ignorará que los namespaces ya existen y creará lo demás.
+          # 3. Apply to Kubernetes - This will apply all resources. If namespaces already exist, it will ignore that error and continue applying the rest. 
+       
           kubectl apply -f k8s/
           
-          # 4. Verificación final para el log
+          # 4. Final verification 
           kubectl get ns
 
       # 3. Validation Checks
