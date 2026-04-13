@@ -5,6 +5,9 @@ on:
     branches: [ "master" ]
   pull_request:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
 
   # ============================
@@ -49,7 +52,6 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
 
       # ---- CodeQL ----
       - name: Initialize CodeQL
