@@ -23,6 +23,12 @@ jobs:
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
 
+      - name: Setup k3d Cluster
+        run: |
+          curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.6.0 bash
+          k3d cluster create mycluster --port "8080:80@loadbalancer"
+          k3d kubeconfig get mycluster > ~/.kube/config
+
       - name: Apply Kubernetes Manifests
         run: |
           kubectl apply -f k8s/
