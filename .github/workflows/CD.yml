@@ -22,10 +22,10 @@ jobs:
       - name: Setup k3d Cluster
         run: |
           curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.6.0 bash
-          k3d cluster create mycluster --port "8080:80@loadbalancer"
+          k3d cluster create kleva-cluster --port "8080:80@loadbalancer"
 
           # This configures kubectl to use the new cluster's kubeconfig
-          k3d kubeconfig get mycluster > ~/.kube/config
+          k3d kubeconfig get kleva-cluster > ~/.kube/config
 
       # 2. Apply Manifests
 
@@ -45,4 +45,4 @@ jobs:
       - name: Verify Deployment
         run: |
           kubectl get pods -A
-          echo "Despliegue completado exitosamente en clúster efímero."
+          echo "Ephimeral kluster deployment"
