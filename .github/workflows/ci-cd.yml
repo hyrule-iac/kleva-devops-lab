@@ -37,8 +37,17 @@ jobs:
           command: test
           args: --file=app/kleva-app.csproj --severity-threshold=high
 
+      - name: Check Secret Visibility
+        run: |
+           if [ -z "${{ secrets.SONAR_TOKEN }}" ]; then
+            echo "El secreto SONAR_TOKEN está VACÍO"
+            exit 1
+           else
+            echo "El secreto tiene un valor configurado"
+           fi
+
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v2
+        uses: SonarSource/sonarcloud-github-action@v3.1.0 # Intenta usar esta versión más reciente
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
