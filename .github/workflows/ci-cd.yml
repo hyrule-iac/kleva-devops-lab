@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Necesario para obtener el historial completo de git y pasarlo a SonarCloud
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
