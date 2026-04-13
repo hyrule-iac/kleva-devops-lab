@@ -25,18 +25,20 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
-
-      - name: Restore
-        run: dotnet restore app/
-
-      - name: Build
-        run: dotnet build app/ --configuration Release --no-restore
+          dotnet-version: '10.0.x' # Asegúrate de que tu app sea compatible con v10 o usa '8.0.x'
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: csharp
+          # Usar queries de seguridad extendidas (opcional pero recomendado para Senior)
+          queries: security-extended,security-and-quality 
+
+      # FIX CRÍTICO: El build va DESPUÉS del init para que CodeQL lo capture
+      - name: Restore & Build for CodeQL
+        run: |
+          dotnet restore app/
+          dotnet build app/ --configuration Release --no-restore
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
