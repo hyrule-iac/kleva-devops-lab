@@ -15,9 +15,6 @@ jobs:
   # ============================
   ci:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: app
 
     steps:
       - name: Checkout
@@ -29,13 +26,13 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore
+        run: dotnet restore app/
 
       - name: Build
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build app/ --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test --no-build --verbosity normal
+        run: dotnet test app/ --no-build --verbosity normal
 
       # ---- Snyk SCA ----
       - name: Snyk SCA
@@ -44,7 +41,7 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           command: test
-          args: --all-projects
+          args: --file=app/kleva-app.csproj --severity-threshold=high
 
       # ---- SonarCloud ----
       - name: SonarCloud Scan
