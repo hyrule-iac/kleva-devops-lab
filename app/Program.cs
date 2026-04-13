@@ -107,7 +107,7 @@ app.MapGet("/", async (HttpContext ctx) =>
         <body>
           <div class="card">
             <div class="badge"><span class="dot"></span> Sistema operativo</div>
-            <h1>Kleva DevOps Lab</h1>
+            <h1>Kleva DevOps Lab -v3 </h1>
             <p class="subtitle">Infraestructura desplegada con Terraform + GitHub Actions</p>
             <div class="grid">
               <div class="metric">
