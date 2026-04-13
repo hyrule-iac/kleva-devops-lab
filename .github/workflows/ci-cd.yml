@@ -30,7 +30,7 @@ jobs:
         run: dotnet test app/ --no-build --verbosity normal
 
       - name: Snyk SCA
-        uses: snyk/actions/setup@v3
+        uses: snyk/actions/setup@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
