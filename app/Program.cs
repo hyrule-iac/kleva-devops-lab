@@ -78,7 +78,7 @@ app.MapGet("/", async (HttpContext ctx) =>
         <head>
           <meta charset="UTF-8"/>
           <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-          <title>Kleva DevOps Lab</title>
+          <title>Kleva DevOps Lab - v2.0</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -111,7 +111,7 @@ app.MapGet("/", async (HttpContext ctx) =>
             <p class="subtitle">Infraestructura desplegada con Terraform + GitHub Actions</p>
             <div class="grid">
               <div class="metric">
-                <div class="metric-label">Versión</div>
+                <div class="metric-label">Version</div>
                 <div class="metric-value">{{version}}</div>
               </div>
               <div class="metric">
