@@ -1,0 +1,146 @@
+# ConfigMap holds the Prometheus scrape configuration
+# Defines which targets to scrape and how often
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      # How often Prometheus collects metrics from targets
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    scrape_configs:
+      # Scrape Prometheus itself to monitor the monitoring stack
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+
+      # Scrape the .NET app using Kubernetes pod annotations
+      # Any pod with prometheus.io/scrape: "true" gets auto-discovered
+      - job_name: 'kleva-app'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: ['app']
+        relabel_configs:
+          # Only scrape pods that have the annotation set to true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          # Use the port defined in the annotation
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            target_label: __address__
+            regex: (.+)
+            replacement: ${1}
+          # Use the path defined in the annotation
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+---
+# Deployment runs the Prometheus server
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      # ServiceAccount allows Prometheus to query the Kubernetes API
+      # needed for pod auto-discovery
+      serviceAccountName: prometheus-sa
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.51.0
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+            # Keep 7 days of metrics data locally
+            - "--storage.tsdb.retention.time=7d"
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+            - name: storage
+              mountPath: /prometheus
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"
+      volumes:
+        # Mount the ConfigMap as a file inside the container
+
+        - name: config
+          configMap:
+            name: prometheus-config
+        # EmptyDir is ephemeral — data lost on pod restart
+        # Good enough for local lab, use PVC in production
+        - name: storage
+          emptyDir: {}
+---
+
+# Service exposes Prometheus inside the cluster and via NodePort
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-svc
+  namespace: monitoring
+spec:
+  selector:
+    app: prometheus
+  ports:
+    - port: 9090
+      targetPort: 9090
+      nodePort: 30090
+  type: NodePort
+---
+
+# ServiceAccount gives Prometheus an identity within the cluster
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-sa
+  namespace: monitoring
+---
+
+# ClusterRole defines what Kubernetes resources Prometheus can read
+# Needs to list pods and endpoints for service discovery
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-role
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "endpoints", "services", "nodes"]
+    verbs: ["get", "list", "watch"]
+---
+
+# ClusterRoleBinding links the ServiceAccount to the ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-role
+subjects:
+  - kind: ServiceAccount
+    name: prometheus-sa
+    namespace: monitoring

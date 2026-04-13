@@ -1,0 +1,12 @@
+# ConfigMap stores non-sensitive environment variables for the app
+# Injected into the pod as env vars at runtime
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kleva-app-config
+  namespace: app
+data:
+  # .NET environment (Development shows Swagger, Production hides it)
+  ASPNETCORE_ENVIRONMENT: "Development"
+  # App version — overridden by CI/CD pipeline with git commit hash
+  APP_VERSION: "local"

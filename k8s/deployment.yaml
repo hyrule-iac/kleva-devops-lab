@@ -1,0 +1,67 @@
+# Deployment manages the desired state of the app pods
+# Kubernetes ensures this many replicas are always running
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kleva-app
+  namespace: app
+  labels:
+    app: kleva-app
+spec:
+  # Run 2 replicas for basic high availability
+  replicas: 2
+  selector:
+    matchLabels:
+      app: kleva-app
+  template:
+    metadata:
+      labels:
+        app: kleva-app
+      annotations:
+        # Tells Prometheus to scrape this pod automatically
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: kleva-app
+          # Image built locally with: docker build -t kleva-app:local ./app
+          image: kleva-app:local
+          # Never pull from registry — use local image only (important for minikube)
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 80
+          # Load non-sensitive config from ConfigMap
+          envFrom:
+            - configMapRef:
+                name: kleva-app-config
+          # Load sensitive config from Secret
+          env:
+            - name: APP_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kleva-app-secret
+                  key: APP_SECRET_KEY
+          # Liveness probe: restarts the pod if the app stops responding
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+          # Readiness probe: removes pod from load balancer if not ready
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          # Resource limits prevent a single pod from starving the node
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "250m"
