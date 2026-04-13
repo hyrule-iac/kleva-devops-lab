@@ -7,7 +7,7 @@ metadata:
   name: grafana-datasource
   namespace: monitoring
   labels:
-    grafana_datasource: "1"
+    grafana_datasource: "1" # El sidecar de Helm buscará esta etiqueta
 data:
   datasource.yaml: |
     apiVersion: 1
@@ -18,6 +18,7 @@ data:
         access: proxy
         isDefault: true
         editable: false
+
 ---
 # ============================
 # 2. Dashboard Provider
@@ -27,6 +28,8 @@ kind: ConfigMap
 metadata:
   name: grafana-dashboard-provider
   namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
 data:
   provider.yaml: |
     apiVersion: 1
@@ -42,6 +45,7 @@ data:
         foldersFromFilesStructure: true
         options:
           path: /var/lib/grafana/dashboards/kleva
+
 ---
 # ============================
 # 3. Dashboard JSON
@@ -51,6 +55,8 @@ kind: ConfigMap
 metadata:
   name: grafana-dashboard
   namespace: monitoring
+  labels:
+    grafana_dashboard: "1" # Vital para que el sidecar lo importe solo
 data:
   kleva.json: |
     {
@@ -91,91 +97,6 @@ data:
               "legendFormat": "{{ endpoint }}"
             }
           ]
-        },
-        {
-          "type": "timeseries",
-          "title": "Request duration p95 (seconds)",
-          "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
-          "targets": [
-            {
-              "expr": "histogram_quantile(0.95, rate(kleva_http_request_duration_seconds_bucket[1m]))",
-              "legendFormat": "p95 {{ endpoint }}"
-            }
-          ]
-        },
-        {
-          "type": "gauge",
-          "title": "Active requests",
-          "gridPos": { "x": 0, "y": 20, "w": 6, "h": 4 },
-          "targets": [
-            {
-              "expr": "kleva_active_requests",
-              "legendFormat": "active"
-            }
-          ]
         }
       ]
     }
----
-# ============================
-# 4. Grafana Deployment
-# ============================
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: grafana
-  namespace: monitoring
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: grafana
-  template:
-    metadata:
-      labels:
-        app: grafana
-    spec:
-      containers:
-        - name: grafana
-          image: grafana/grafana:10.4.0
-          ports:
-            - containerPort: 3000
-          env:
-            - name: GF_SECURITY_ADMIN_USER
-              value: "admin"
-            - name: GF_SECURITY_ADMIN_PASSWORD
-              value: "admin"
-          volumeMounts:
-            - name: grafana-datasource
-              mountPath: /etc/grafana/provisioning/datasources
-            - name: grafana-dashboard-provider
-              mountPath: /etc/grafana/provisioning/dashboards
-            - name: grafana-dashboard
-              mountPath: /var/lib/grafana/dashboards/kleva
-      volumes:
-        - name: grafana-datasource
-          configMap:
-            name: grafana-datasource
-        - name: grafana-dashboard-provider
-          configMap:
-            name: grafana-dashboard-provider
-        - name: grafana-dashboard
-          configMap:
-            name: grafana-dashboard
----
-# ============================
-# 5. Grafana Service
-# ============================
-apiVersion: v1
-kind: Service
-metadata:
-  name: grafana-svc
-  namespace: monitoring
-spec:
-  type: NodePort
-  selector:
-    app: grafana
-  ports:
-    - port: 3000
-      targetPort: 3000
-      nodePort: 30300
