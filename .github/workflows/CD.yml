@@ -18,17 +18,31 @@ jobs:
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
 
-      - name: Configure Kubeconfig
-        run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
-
+      # 1. Create Cluster
       - name: Setup k3d Cluster
         run: |
           curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.6.0 bash
           k3d cluster create mycluster --port "8080:80@loadbalancer"
+
+          # This configures kubectl to use the new cluster's kubeconfig
           k3d kubeconfig get mycluster > ~/.kube/config
+
+      # 2. Apply Manifests
 
       - name: Apply Kubernetes Manifests
         run: |
+          # Crear primero los Namespaces
+          # Esperar a que los namespaces estén activos
+          kubectl apply -f k8s/namespace.yaml
+          
+          kubectl wait --for=condition=Active namespace/app --timeout=15s
+          kubectl wait --for=condition=Active namespace/monitoring --timeout=15s
+          
+          # Apply (ConfigMaps, Secrets, Deployments, Services)
           kubectl apply -f k8s/
+
+      # 3. Validation Checks
+      - name: Verify Deployment
+        run: |
+          kubectl get pods -A
+          echo "Despliegue completado exitosamente en clúster efímero."
