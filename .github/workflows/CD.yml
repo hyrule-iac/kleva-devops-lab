@@ -27,19 +27,20 @@ jobs:
           # This configures kubectl to use the new cluster's kubeconfig
           k3d kubeconfig get kleva-cluster > ~/.kube/config
 
-      # 2. Apply Manifests
-
       - name: Apply Kubernetes Manifests
         run: |
-          # Crear primero los Namespaces
-          # Esperar a que los namespaces estén activos
+          # 1. Aplicamos los namespaces primero
           kubectl apply -f k8s/namespace.yaml
           
-          kubectl wait --for=condition=Active namespace/app --timeout=15s
-          kubectl wait --for=condition=Active namespace/monitoring --timeout=15s
+          # 2. Un pequeño respiro de 5 segundos para que el API Server se asiente
+          sleep 5
           
-          # Apply (ConfigMaps, Secrets, Deployments, Services)
+          # 3. Aplicamos TODO el directorio k8s. 
+          # Kubernetes ignorará que los namespaces ya existen y creará lo demás.
           kubectl apply -f k8s/
+          
+          # 4. Verificación final para el log
+          kubectl get ns
 
       # 3. Validation Checks
       - name: Verify Deployment
