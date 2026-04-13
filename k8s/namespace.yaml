@@ -1,6 +1,8 @@
 # Creates isolated namespaces to separate concerns:
 # - 'app' for the application workloads
 # - 'monitoring' for observability stack (Prometheus + Grafana)
+
+ 
 apiVersion: v1
 kind: Namespace
 metadata:
