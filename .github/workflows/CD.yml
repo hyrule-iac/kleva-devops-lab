@@ -44,8 +44,7 @@ jobs:
       # Ya no necesitas crear namespaces aquí, TF ya los hizo
       - name: Apply App Manifests
         run: |
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml
+
           kubectl apply -f k8s/secrets.yaml
 
       # 4. Verificación Final
