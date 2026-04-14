@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # Nombres de los namespaces
 app_namespace        = "app"
 monitoring_namespace = "monitoring"
@@ -9,7 +9,7 @@ environment = "dev"
 # NOTA: La contraseña de Grafana (grafana_admin_password) 
 # NO la pongas aquí si vas a subir este archivo a Git.
 # Es mejor pasarla como secreto en el pipeline o dejar que use el default.
-=======
+
 terraform {
   required_version = "~> 1.5.0"
   required_providers {
@@ -33,4 +33,4 @@ provider "helm" {
     config_path = "~/.kube/config"
   }
 }
->>>>>>> bad6ac6fd7fece97bc921a35dc0d7fa2919e0fa9
+
