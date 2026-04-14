@@ -18,32 +18,39 @@ jobs:
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
 
-      # 1. Create Cluster
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      # 1. Crear el clúster (La base de todo)
       - name: Setup k3d Cluster
         run: |
           curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.6.0 bash
           k3d cluster create kleva-cluster --port "8080:80@loadbalancer"
-
-          # This configures kubectl to use the new cluster's kubeconfig
+          mkdir -p ~/.kube
           k3d kubeconfig get kleva-cluster > ~/.kube/config
 
-      - name: Apply Kubernetes Manifests
+      # 2. TERRAFORM: Crea Namespaces, ConfigMaps y Grafana
+      - name: Terraform Apply
+        env:
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
         run: |
-          # 1. Apply namespaces first
-          kubectl apply -f k8s/namespace.yaml
-          
-          # 2. Sleep wait for 5 seconds to ensure namespaces are created before applying other resources
-          sleep 5
-          
-          # 3. Apply to Kubernetes - This will apply all resources. If namespaces already exist, it will ignore that error and continue applying the rest. 
-       
-          kubectl apply -f k8s/
-          
-          # 4. Final verification 
-          kubectl get ns
+          cd terraform/
+          terraform init
+          terraform apply -auto-approve \
+            -var="grafana_admin_password=${{ secrets.GRAFANA_PASS }}" \
+            -var="environment=dev"
 
-      # 3. Validation Checks
+      # 3. KUBECTL: Solo despliega la APP (Deployment/Service)
+      # Ya no necesitas crear namespaces aquí, TF ya los hizo
+      - name: Apply App Manifests
+        run: |
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+          kubectl apply -f k8s/secrets.yaml
+
+      # 4. Verificación Final
       - name: Verify Deployment
         run: |
+          kubectl get ns
           kubectl get pods -A
-          echo "Ephimeral kluster deployment"
+          echo "Despliegue híbrido (Terraform + Kubectl) completado exitosamente."
