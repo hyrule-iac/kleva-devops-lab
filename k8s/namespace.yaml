@@ -1,4 +1,5 @@
-# Creates isolated namespaces to separate concerns:
+# Creates isolated namespaces to segregate resources accordingly and manage access control. 
+# In this setup, we have two namespaces:
 # - 'app' for the application workloads
 # - 'monitoring' for observability stack (Prometheus + Grafana)
 

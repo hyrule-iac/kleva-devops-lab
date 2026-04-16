@@ -1,3 +1,21 @@
+#----------------------------------------------------------------------------------------------------------------------------------------
+# This CI workflow file for GitHub Actions is part of DevSecOps best practices and is designed to build, test, and perform security checks on a C# project using .NET 10.0.
+# It uses an environment variable: FORCE_JAVASCRIPT_ACTIONS_TO_NODE24 to ensure compatibility with the latest Node.js version for any Js-based actions used in this workflow.
+# This includes actions for Snyk SCA and SonarCloud, which may have dependencies on Node.js.
+# This CI workflow is designed to run on every push to the master branch as part of the CI/CD architecture
+# It follows DevSecOps best practices by integrating security checks (Snyk SCA) and code quality analysis (SonarCloud) into the CI process, 
+# Ensuring that code is not only functional but also secure and maintainable before it is deployed.
+# It will execute the following steps:
+#  
+#  1. Checks out the code from the repository so that it can be built and tested. The fetch-depth: 0 option is used to get the full git history, which is necessary for SonarCloud to perform accurate analysis and track code changes over time.
+#  2. Sets up the .NET environment for building and testing the C# project so that we can use the dotnet CLI commands to restore, build, and test the project.
+#  3. Restores the project dependencies, this allow us to download all the necessary NuGet packages required for the project to build and run correctly, ensuring that we have all the libraries and tools needed for the next steps.
+#  4. Builds the project in Release configuration.
+#  5. Runs the tests to ensure that the code is working as expected.
+#  6. Performs a Snyk SCA (Software Composition Analysis) to check for vulnerabilities in the project dependencies, with a severity threshold of "high".
+#  7. Checks if the SONAR_TOKEN secret is configured and not empty, which is necessary for the SonarCloud scan.
+#  8. Runs the SonarCloud scan to analyze the code quality and security issues, using the SONAR_TOKEN for authentication.
+#----------------------------------------------------------------------------------------------------------------------------------------
 name: CI
 
 on:
@@ -15,7 +33,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Necesario para obtener el historial completo de git y pasarlo a SonarCloud
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -42,14 +60,14 @@ jobs:
       - name: Check Secret Visibility
         run: |
            if [ -z "${{ secrets.SONAR_TOKEN }}" ]; then
-            echo "El secreto SONAR_TOKEN está VACÍO"
+            echo " SONAR_TOKEN secret is EMPTY"
             exit 1
            else
-            echo "El secreto tiene un valor configurado"
+            echo "Secret properly configured"
            fi
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v3.1.0 # Intenta usar esta versión más reciente
+        uses: SonarSource/sonarcloud-github-action@v3.1.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

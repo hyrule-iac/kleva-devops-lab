@@ -1,13 +1,17 @@
-# ============================
-# 1. Datasource: Prometheus
-# ============================
+# This configuration file sets up Grafana with a Prometheus datasource and a custom dashboard for the Kleva application. 
+# It consists of three main sections: 
+# The datasource configuration, a dashboard provider configuration, and a dashboard JSON definition.
+
+# ========================================
+# 1. Datasource configuration: Prometheus
+# ========================================
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-datasource
   namespace: monitoring
   labels:
-    grafana_datasource: "1" # El sidecar de Helm buscará esta etiqueta
+    grafana_datasource: "1" # HELM sidecart will look for this label to import the datasource automatically
 data:
   datasource.yaml: |
     apiVersion: 1
@@ -20,9 +24,9 @@ data:
         editable: false
 
 ---
-# ============================
-# 2. Dashboard Provider
-# ============================
+# ======================================================================
+# 2. Dashboard Provider Configuration to load dashboards from ConfigMaps
+# ======================================================================
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -47,17 +51,22 @@ data:
           path: /var/lib/grafana/dashboards/kleva
 
 ---
-# ============================
-# 3. Dashboard JSON
-# ============================
+# =============================================================================================================
+# 3. Dashboard JSON to display Kleva metrics
+#    This dashboard will be automatically imported by the sidecar based on the label and provider configuration
+# =============================================================================================================
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-dashboard
   namespace: monitoring
   labels:
-    grafana_dashboard: "1" # Vital para que el sidecar lo importe solo
+    grafana_dashboard: "1" # Sidecar will look for this label to import the dashboard automatically
 data:
+
+  #The dashboard JSON defines the layout and queries for the Kleva application metrics.
+  #Is composed of three panels, the first two are stat panels showing total requests and uptime, 
+  #The third is a timeseries panel showing the request rate over time.
   kleva.json: |
     {
       "title": "Kleva App",

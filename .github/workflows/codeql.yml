@@ -1,3 +1,14 @@
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------
+# This is a CodeQL workflow configuration file for GitHub Actions as part of DevSecOps best practices.
+# It is designed to run CodeQL analysis on a C# project whenever the "CI" workflow completes successfully.
+# This avoids running multiple workflows on the same push and ensures that CodeQL only runs after the CI workflow has successfully built and tested the code.
+# The workflow checks out the code, sets up the .NET environment, initializes CodeQL with specific queries, 
+# Builds the project, and then performs the analysis. 
+# The results of the analysis are written to the security events of the repository, 
+# Which can be viewed in the Security tab of GitHub. 
+#This setup helps in identifying potential security vulnerabilities and code quality issues in a C# application.
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 name: CodeQL
 
 on:
@@ -5,6 +16,15 @@ on:
     workflows: ["CI"]
     types:
       - completed
+# The jobs here does the following steps using ubuntu as the runner:
+#   Checks if the CI workflow completed successfully, 
+#   Adds permissions for security events, actions, and contents,
+#   Checks out the code with full history (fetch-depth: 0),
+#   Sets up the .NET environment for building the C# project,
+#   Initializes CodeQL with specific queries to analyze security and code quality issues,
+#     Builds the project, and performs the analysis.
+#     This allows us to run CodeQL analysis only after the CI workflow has successfully built and tested the code, 
+#     Avoiding race runs on the same push and ensuring that we only analyze code that has passed basic checks.
 
 jobs:
   analyze:
@@ -25,16 +45,16 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x' # Asegúrate de que tu app sea compatible con v10 o usa '8.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: csharp
-          # Usar queries de seguridad extendidas (opcional pero recomendado para Senior)
-          queries: security-extended,security-and-quality 
+          # Using extended security queries for deeper analysis, and also including quality queries to catch code quality issues
+          queries: security-extended,security-and-quality
 
-      # FIX CRÍTICO: El build va DESPUÉS del init para que CodeQL lo capture
+
       - name: Restore & Build for CodeQL
         run: |
           dotnet restore app/

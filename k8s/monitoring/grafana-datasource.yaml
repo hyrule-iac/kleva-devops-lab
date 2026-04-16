@@ -1,3 +1,6 @@
+# This ConfigMap defines the datasource configuration for Grafana, pointing to the Prometheus service.
+# This configurations must match the service name and port defined in the Prometheus deployment to ensure Grafana can connect to it successfully.
+
 apiVersion: v1
 kind: ConfigMap
 metadata:

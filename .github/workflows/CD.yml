@@ -1,3 +1,8 @@
+#----------------------------------------------------------------------------------------------------------------------------------------
+# This GitHub Actions CD workflow is designed to run after the "CI" workflow completes successfully.
+# As a regular CD workflow, will deploy the application to a Kubernetes cluster after the CI workflow has built and tested the code.
+# This ensures that we only deploy code that has passed all CI checks, maintaining the integrity of our CD and entire CI/CD architecture.
+#----------------------------------------------------------------------------------------------------------------------------------------
 name: Deploy
 
 on:
@@ -21,7 +26,9 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # 1. Crear el clúster (La base de todo)
+      # 1. Create K3d Cluster to emulate a real Kubernetes environment for our deployment. 
+      #    This will allow us to test the full deployment process in a local cluster before moving to production.
+      #    Also refactoring the workflow to use Terraform for creating namespaces and ConfigMaps, while keeping kubectl for deploying the application manifests.
       - name: Setup k3d Cluster
         run: |
           curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.6.0 bash
@@ -29,7 +36,10 @@ jobs:
           mkdir -p ~/.kube
           k3d kubeconfig get kleva-cluster > ~/.kube/config
 
-      # 2. TERRAFORM: Crea Namespaces, ConfigMaps y Grafana
+      # 2. Terraform : Creates namespaces and ConfigMaps for Grafana (Datasource, Dashboard Provider, and Dashboard JSON)
+      #                This way we can test our Terraform code for infrastructure provisioning while still using kubectl for application deployment, 
+      #                achieving a hybrid approach that allows us to validate both aspects of our deployment process.
+
       - name: Terraform Apply
         env:
           TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
@@ -40,16 +50,17 @@ jobs:
             -var="grafana_admin_password=${{ secrets.GRAFANA_PASS }}" \
             -var="environment=dev"
 
-      # 3. KUBECTL: Solo despliega la APP (Deployment/Service)
-      # Ya no necesitas crear namespaces aquí, TF ya los hizo
+      # 3. KUBECTL: Will apply the application manifests (Secrets, Deployments, Services) to deploy the Kleva application and its monitoring components.
+      #             This allows us to test the actual deployment of our application using kubectl, while still leveraging Terraform for the IaC setup
+      
       - name: Apply App Manifests
         run: |
 
           kubectl apply -f k8s/secrets.yaml
 
-      # 4. Verificación Final
+      # 4. Final verification step to check that all resources are created successfully and the application is running as expected in the cluster.
       - name: Verify Deployment
         run: |
           kubectl get ns
           kubectl get pods -A
-          echo "Despliegue híbrido (Terraform + Kubectl) completado exitosamente."
+          echo "Hybrid deployment (Terraform + Kubectl) was successfully completed."

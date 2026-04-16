@@ -1,11 +1,9 @@
-
-# Nombres de los namespaces
+# Name of the namespaces
 app_namespace        = "app"
 monitoring_namespace = "monitoring"
 
-# Configuración de ambiente
+# environment label for namespaces and resources
 environment = "dev"
 
-# NOTA: La contraseña de Grafana (grafana_admin_password) 
-# NO la pongas aquí si vas a subir este archivo a Git.
-# Es mejor pasarla como secreto en el pipeline o dejar que use el default.
+# Grafana admin password is on the secrets of the pipeline, so we can avoid hardcoding it here. 
+#(grafana_admin_password) 

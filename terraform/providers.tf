@@ -1,15 +1,19 @@
+# Here we declare the Terraform block for the  version and the providers we will use in our configuration. 
+# We also configure the Kubernetes provider to connect to our cluster using the kubeconfig file.
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = "~> 1.14.0"
 
-  # CONFIGURACIÓN DEL BACKEND CLOUD
+  # HCP Terraform Cloud block
+  # This will activate the Terraform Cloud integration, allowing us to manage our state and run Terraform operations in the cloud.
   cloud {
-    organization = "Hyrule-Nexus" # Cámbialo por tu nombre de org en HCP
+    organization = "Hyrule-Nexus"
 
     workspaces {
-      name = "Demo01" # El nombre del workspace que creaste
+      name = "Demo01"
     }
   }
 
+  # Here we are declaring the required providers for our Terraform configuration, Kubernetes and Helm, with their respective versions.
   required_providers {
     kubernetes = {
       source  = "hashicorp/kubernetes"

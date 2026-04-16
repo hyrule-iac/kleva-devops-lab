@@ -1,5 +1,8 @@
-# ConfigMap stores non-sensitive environment variables for the app
+# This configuration file defines a ConfigMap named "kleva-app-config" in the "app" namespace.
+# This will enable us to store non-sensitive configuration data (like environment variables) separately from our application code and secrets.
+# ConfigMaps stores non-sensitive environment variables for the app
 # Injected into the pod as env vars at runtime
+
 apiVersion: v1
 kind: ConfigMap
 metadata:

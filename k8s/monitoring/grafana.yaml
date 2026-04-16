@@ -1,3 +1,8 @@
+# This Grafana yaml file combines the datasource configuration, dashboard provider, and dashboard definition into a single manifest for easier management.
+# This will allow us to deploy Grafana with all its configurations in one go, ensuring that the datasource and dashboard are set up correctly from the start.
+# The Dashboard JSON is a simple example that visualizes total requests, 
+# Uptime, request rate, request duration, and active requests for the Kleva application using Prometheus metrics.
+
 # ============================
 # 1. Datasource: Prometheus
 # ============================
@@ -19,6 +24,7 @@ data:
         isDefault: true
         editable: false
 ---
+
 # ============================
 # 2. Dashboard Provider
 # ============================
@@ -41,8 +47,7 @@ data:
         updateIntervalSeconds: 10
         foldersFromFilesStructure: true
         options:
-          # ✔ ESTA RUTA ESTÁ CORRECTA
-          # Grafana 10.4 carga dashboards desde /var/lib/grafana/dashboards
+          # Path must match the volumeMount in the Grafana deployment to ensure the sidecar can find the dashboard JSON files
           path: /var/lib/grafana/dashboards/kleva
 ---
 # ============================
@@ -120,7 +125,7 @@ data:
     }
 ---
 # ============================
-# 4. Grafana Deployment (CORREGIDO)
+# 4. Grafana Deployment 
 # ============================
 apiVersion: apps/v1
 kind: Deployment
@@ -153,12 +158,16 @@ spec:
             - name: grafana-dashboard-provider
               mountPath: /etc/grafana/provisioning/dashboards
 
-            # ❗ CAMBIO IMPORTANTE AQUÍ
-            # Antes: /etc/grafana/provisioning/dashboards/kleva  ❌
-            # Ahora: /var/lib/grafana/dashboards/kleva          ✔
+            # Path must match the provider configuration in grafana.yaml to ensure the sidecar can find the dashboard JSON files
             - name: grafana-dashboard
               mountPath: /var/lib/grafana/dashboards/kleva
-              # ← ESTE ES EL FIX QUE FALTABA
+
+      # A Sidecar container to watch for changes in the dashboard ConfigMap and trigger Grafana to reload dashboards 
+      # Contains 3 volumes: one for the datasource, one for the provider, and one for the dashboard JSON files.
+      # This volumes will be mounted in the sidecar and the main Grafana container to store the datasource and dashboard configurations. 
+      # The sidecar will watch for changes in these volumes, 
+      # Allowing us to update dashboards and datasources on the fly without needing to redeploy Grafana.
+      
       volumes:
         - name: grafana-datasource
           configMap:

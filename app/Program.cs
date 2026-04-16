@@ -161,6 +161,8 @@ app.MapGet("/health", () =>
         uptime = $"{(DateTime.UtcNow - startTime).TotalSeconds:F0}s"
     });
 });
+
+
 // ── Prometheus scrape endpoint ────────────────────────────────────────────────
 // MapMetrics() exposes /metrics in the OpenMetrics/Prometheus text format
 // Prometheus scrapes this endpoint every 15s as configured in prometheus.yaml
