@@ -1,13 +1,27 @@
-#-------------------------------------------------------------------------------------------------------------------------------------------------------------
-# This is a CodeQL workflow configuration file for GitHub Actions as part of DevSecOps best practices.
-# It is designed to run CodeQL analysis on a C# project whenever the "CI" workflow completes successfully.
-# This avoids running multiple workflows on the same push and ensures that CodeQL only runs after the CI workflow has successfully built and tested the code.
-# The workflow checks out the code, sets up the .NET environment, initializes CodeQL with specific queries, 
-# Builds the project, and then performs the analysis. 
-# The results of the analysis are written to the security events of the repository, 
-# Which can be viewed in the Security tab of GitHub. 
-#This setup helps in identifying potential security vulnerabilities and code quality issues in a C# application.
-#-------------------------------------------------------------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------
+# CODEQL WORKFLOW: Advanced SAST (Static Application Security Testing)
+# Trigger: Post-CI success to ensure analysis runs on verified build artifacts.
+# -----------------------------------------------------------------------------------------
+# Security Strategy:
+# 1. Automated Vulnerability Scanning: Identifies security flaws, memory leaks, 
+#    and logic vulnerabilities within the C# codebase.
+# 2. GitHub Security Integration: Findings are pushed to the "Security" tab for 
+#    centralized auditing and risk management.
+# 3. DevSecOps Alignment: Operates as a secondary security gate to validate 
+#    structural integrity beyond regular unit testing.
+# -----------------------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------------------
+# SAST EXECUTION ENGINE: CodeQL Analysis on Ubuntu Runner
+# -----------------------------------------------------------------------------------------
+# Workflow Optimization & Security:
+# 1. Sequential Execution: Gated by CI success to eliminate race conditions and 
+#    optimize runner minutes on failed builds.
+# 2. Elevated Permissions: Configured for secure write-access to Security Events 
+#    and Repository Actions.
+# 3. Deep Analysis: Full Git history (fetch-depth: 0) enabled for advanced 
+#    path-tracking and vulnerability correlation in the C# codebase.
+# -----------------------------------------------------------------------------------------
 
 name: CodeQL
 
@@ -16,16 +30,6 @@ on:
     workflows: ["CI"]
     types:
       - completed
-# The jobs here does the following steps using ubuntu as the runner:
-#   Checks if the CI workflow completed successfully, 
-#   Adds permissions for security events, actions, and contents,
-#   Checks out the code with full history (fetch-depth: 0),
-#   Sets up the .NET environment for building the C# project,
-#   Initializes CodeQL with specific queries to analyze security and code quality issues,
-#     Builds the project, and performs the analysis.
-#     This allows us to run CodeQL analysis only after the CI workflow has successfully built and tested the code, 
-#     Avoiding race runs on the same push and ensuring that we only analyze code that has passed basic checks.
-
 jobs:
   analyze:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}

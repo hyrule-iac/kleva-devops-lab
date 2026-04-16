@@ -1,9 +1,15 @@
-#----------------------------------------------------------------------------------------------------------------------------------------
-# This GitHub Actions CD workflow is designed to run after the "CI" workflow completes successfully.
-# As a regular CD workflow, will deploy the application to a Kubernetes cluster after the CI workflow has built and tested the code.
-# This ensures that we only deploy code that has passed all CI checks, maintaining the integrity of our CD and entire CI/CD architecture.
-#----------------------------------------------------------------------------------------------------------------------------------------
-name: Deploy
+# -----------------------------------------------------------------------------------------
+# CD PIPELINE: Continuous Deployment & Orchestration
+# Trigger: Automated execution upon successful CI completion (Master branch).
+# -----------------------------------------------------------------------------------------
+# Core Principles:
+# 1. Pipeline Integrity: Deployment is gated by CI success to ensure only verified, 
+#    secure, and tested code reaches the cluster.
+# 2. Infrastructure as Code: Synchronizes application state with Kubernetes 
+#    manifests/Argo Rollouts for automated delivery.
+# -----------------------------------------------------------------------------------------
+
+name: CD
 
 on:
   workflow_run:
