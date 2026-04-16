@@ -1,3 +1,4 @@
+<!-- CSProj includes prometheus connector for microservice .ASPNEtCore, is vital for Canary deployment with Argo Rollouts-->
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -5,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <!-- Exposes /metrics endpoint in Prometheus format -->
+    <!-- Here Exposes (/metrics) endpoint in Prometheus format -->
     <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
   </ItemGroup>
 </Project>

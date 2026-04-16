@@ -1,49 +1,53 @@
 using Prometheus;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Register Prometheus metrics as a hosted service
-// This enables default .NET runtime metrics: GC, thread pool, memory, etc.
+// Register baseline .NET runtime metrics (GC, Memory, ThreadPool)
+// [Internal Sensor]: Meassures .Net runtime performance and health indicators.
 builder.Services.AddMetrics();
+
 var app = builder.Build();
+
+// Metadata for observability context (Versioning and Environment)
 var version = Environment.GetEnvironmentVariable("APP_VERSION") ?? "1.0.0";
 var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
 var startTime = DateTime.UtcNow;
 
-// ── Custom Prometheus metrics ─────────────────────────────────────────────────
+// ── CUSTOM PROMETHEUS METRICS (SRE RED PATTERNS) ──────────────────────────────
 
-// Counter: total HTTP requests received, labeled by endpoint and status code
+// COUNTER [Odometer]: Total HTTP requests. Only increases, used to calculate throughput.
 var httpRequestsTotal = Metrics.CreateCounter(
     "kleva_http_requests_total",
     "Total number of HTTP requests received",
     labelNames: new[] { "endpoint", "status_code" }
 );
 
-// Histogram: tracks request duration in seconds, useful for latency percentiles
+// HISTOGRAM [Countdouwn]: Measures request latency. Essential for SLOs/SLIs.
+// Ttuned buckets (5ms to 2s) to detect performance degradation.
 var httpRequestDuration = Metrics.CreateHistogram(
     "kleva_http_request_duration_seconds",
     "HTTP request duration in seconds",
     labelNames: new[] { "endpoint" },
     new HistogramConfiguration
     {
-        // Buckets optimized for a fast local API (5ms to 2s)
         Buckets = new[] { 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0 }
     }
 );
 
-// Gauge: current number of active (in-flight) requests
+// GAUGE [Speedometer]: Concurrent requests. Rises and falls based on current load.
 var activeRequests = Metrics.CreateGauge(
     "kleva_active_requests",
     "Number of requests currently being processed"
 );
 
-// Gauge: app uptime in seconds — Grafana can graph this as an uptime counter
+// GAUGE [Watch]: Tracks system uptime for availability monitoring.
 var appUptimeSeconds = Metrics.CreateGauge(
     "kleva_uptime_seconds",
     "Application uptime in seconds"
 );
 
-// Background thread: updates the uptime gauge every 5 seconds
-// Runs as a fire-and-forget task — acceptable for a lab environment
+// Background Task: Periodic update for the uptime gauge (Every 5s).
+// [Uptimer]: Mantiene la aguja del Uptime moviéndose en Grafana.
 _ = Task.Run(async () =>
 {
     while (true)
@@ -53,19 +57,17 @@ _ = Task.Run(async () =>
     }
 });
 
-// ── Middleware: track metrics on every request ────────────────────────────────
+// ── MIDDLEWARE ────────────────────────────────────────────────────────────────
 
-// UseHttpMetrics() from prometheus-net automatically tracks:
-// - http_requests_in_progress
-// - http_requests_received_total
-// - http_request_duration_seconds
-// Must be registered BEFORE route handlers
+// [Automator]: Automatically tracks standard HTTP metrics for all routes.
+// Must be registered BEFORE route handlers.
 app.UseHttpMetrics();
 
-// ── Endpoints ─────────────────────────────────────────────────────────────────
+// ── ENDPOINTS ─────────────────────────────────────────────────────────────────
 
 app.MapGet("/", async (HttpContext ctx) =>
 {
+    // Manual instrumentation for granular root-level tracking
     var timer = httpRequestDuration.WithLabels("/").NewTimer();
     activeRequests.Inc();
 
@@ -74,12 +76,13 @@ app.MapGet("/", async (HttpContext ctx) =>
         var uptime = DateTime.UtcNow - startTime;
         var html = $$"""
         <!DOCTYPE html>
-        <html lang="es">
+        <html lang="en">
         <head>
           <meta charset="UTF-8"/>
           <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-          <title>Kleva DevOps Lab - v2.0</title>
+          <title>Kleva DevOps Lab - v3.0</title>
           <style>
+            /* UI Styling for the Demo */
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                    background: #0f172a; color: #e2e8f0; min-height: 100vh;
@@ -106,16 +109,16 @@ app.MapGet("/", async (HttpContext ctx) =>
         </head>
         <body>
           <div class="card">
-            <div class="badge"><span class="dot"></span> Sistema operativo</div>
+            <div class="badge"><span class="dot"></span> Online</div>
             <h1>Kleva DevOps Lab -v3 </h1>
-            <p class="subtitle">Infraestructura desplegada con Terraform + GitHub Actions</p>
+            <p class="subtitle">Infrastructure orchestrated with Terraform + GitHub Actions</p>
             <div class="grid">
               <div class="metric">
                 <div class="metric-label">Version</div>
                 <div class="metric-value">{{version}}</div>
               </div>
               <div class="metric">
-                <div class="metric-label">Ambiente</div>
+                <div class="metric-label">Environment</div>
                 <div class="metric-value">{{environment}}</div>
               </div>
               <div class="metric">
@@ -123,12 +126,12 @@ app.MapGet("/", async (HttpContext ctx) =>
                 <div class="metric-value">{{uptime.Hours:D2}}h {{uptime.Minutes:D2}}m</div>
               </div>
               <div class="metric">
-                <div class="metric-label">Métricas</div>
+                <div class="metric-label">Metrics</div>
                 <div class="metric-value"><a href="/metrics">/metrics</a></div>
               </div>
             </div>
             <div class="footer">
-              Deployed on AWS EC2 · IaC con Terraform · CI/CD via GitHub Actions<br/>
+              Deployed on AWS EC2 · IaC via Terraform · CI/CD via GitHub Actions<br/>
               <a href="/health">/health</a> · <a href="/metrics">/metrics</a>
             </div>
           </div>
@@ -142,7 +145,7 @@ app.MapGet("/", async (HttpContext ctx) =>
     }
     finally
     {
-        // Always decrement active requests and observe duration, even on error
+        // Cleanup: Decouple active requests and record duration observation
         activeRequests.Dec();
         timer.ObserveDuration();
     }
@@ -150,6 +153,7 @@ app.MapGet("/", async (HttpContext ctx) =>
 
 app.MapGet("/health", () =>
 {
+    // Liveness Probe: Essential for Kubernetes orchestration and health monitoring
     httpRequestsTotal.WithLabels("/health", "200").Inc();
 
     return Results.Ok(new
@@ -162,11 +166,10 @@ app.MapGet("/health", () =>
     });
 });
 
+// ── SCRAPE ENDPOINT ──────────────────────────────────────────────────────────
 
-// ── Prometheus scrape endpoint ────────────────────────────────────────────────
-// MapMetrics() exposes /metrics in the OpenMetrics/Prometheus text format
-// Prometheus scrapes this endpoint every 15s as configured in prometheus.yaml
-// Do NOT add authentication here for the lab — Prometheus needs open access
+// [Speaker]: Exposes all collected metrics in Prometheus/OpenMetrics text format.
+// Prometheus scraper hits this endpoint to ingest data into the Time Series Database.
 
 app.MapMetrics();
 app.Run();
