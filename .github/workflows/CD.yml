@@ -4,7 +4,7 @@
 # -----------------------------------------------------------------------------------------
 # Core Principles:
 # 1. Pipeline Integrity: Deployment is gated by CI success to ensure only verified, 
-#    secure, and tested code reaches the cluster.
+#    Secure, and tested code reaches the cluster.
 # 2. Infrastructure as Code: Synchronizes application state with Kubernetes 
 #    manifests/Argo Rollouts for automated delivery.
 # -----------------------------------------------------------------------------------------
