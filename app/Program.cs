@@ -9,7 +9,7 @@ builder.Services.AddMetrics();
 var app = builder.Build();
 
 // Metadata for observability context (Versioning and Environment)
-var version = Environment.GetEnvironmentVariable("APP_VERSION") ?? "1.0.0";
+var version = Environment.GetEnvironmentVariable("APP_VERSION") ?? "1.1.0";
 var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
 var startTime = DateTime.UtcNow;
 
