@@ -14,11 +14,9 @@ resource "helm_release" "grafana" {
     name  = "adminPassword"
     value = var.grafana_admin_password
   }
-
     # DYNAMIC CONFIGURATION: Enabling Sidecar containers to auto-discover 
     # Dashboards and Datasources stored as Kubernetes ConfigMaps.
     # This enables a "GitOps" approach for observability dashboards.
-
   set {
     name  = "sidecar.dashboards.enabled"
     value = "true"
