@@ -7,3 +7,4 @@ environment = "dev"
 
 # Grafana admin password is on the secrets of the pipeline, so we can avoid hardcoding it here. 
 #(grafana_admin_password) 
+grafana_admin_password = "admin123"

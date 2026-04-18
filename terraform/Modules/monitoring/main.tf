@@ -4,6 +4,12 @@
 # -----------------------------------------------------------------------------------------
 # Deploying Grafana through HELM on Kubernetes cluster also into monitoring namespace
 
+resource "kubernetes_secret_v1" "grafana" {
+  metadata {
+    name = "grafana-secret"
+    namespace = var.monitoring_namespace
+  }
+}
 resource "helm_release" "grafana" {
   name       = "grafana"
   repository = "https://grafana.github.io/helm-charts"

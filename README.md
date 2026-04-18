@@ -1,3 +1,6 @@
+![CI](https://github.com/hyrule-iac/kleva-devops-lab/actions/workflows/CI.yml/badge.svg)
+![CodeQL](https://github.com/hyrule-iac/kleva-devops-lab/actions/workflows/codeql.yml/badge.svg)
+
 # 🚀 Kleva DevOps Lab: Cloud-Native Microservices Platform
 A high-availability, observable microservices architecture built on **.NET Core**, orchestrated by **Kubernetes (k3d)**, and managed through **HashiCorp Terraform (IaC)**.
 This is a cloud and GitOps-driven platform designed for rapid development, deployment, and monitoring of microservices in a scalable environment.

@@ -13,7 +13,7 @@ variable "monitoring_namespace" {
 variable "grafana_admin_password" {
   description = "Password para el admin de Grafana"
   type        = string
-  default     = "admin123"
+  default     = grafana_admin_password
   sensitive   = true # Esto oculta el valor en los logs
 }
 
