@@ -22,3 +22,9 @@ variable "environment" {
   type        = string
   default     = "dev"
 }
+
+variable "kubeconfig_path" {
+  description = "K8s config path"
+  type = string
+  default = "~/.kube/config"
+}
