@@ -14,7 +14,7 @@ name: CI
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "master", "tfmodules"]
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
