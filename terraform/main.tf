@@ -9,6 +9,7 @@ module "k8s" {
   app_namespace = var.app_namespace
   monitoring_namespace = var.monitoring_namespace
   environment = var.environment
+  grafana_admin_password = var.grafana_admin_password 
 }
 
 # M2 : Observability Stack trough HELM (Grafana + Prometheus)

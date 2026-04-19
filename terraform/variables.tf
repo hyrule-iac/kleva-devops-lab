@@ -11,9 +11,9 @@ variable "monitoring_namespace" {
 }
 
 variable "grafana_admin_password" {
-  description = "Password para el admin de Grafana"
+  description = "Password for Grafana admin user"
   type        = string
-  sensitive   = true # Esto oculta el valor en los logs
+  sensitive   = true  # importante para que no aparezca en logs
 }
 
 variable "environment" {
