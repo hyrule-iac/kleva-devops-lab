@@ -12,5 +12,5 @@ spec:
       steps:
         - setWeight: 20
         # Uncomment pause to pause it manually, when deactivated, will do it automatic analysis.
-          # Manual Pause can be used for demos, Auto analysis is best for prod
+          # Manual Pause can be used for demos, Auto analysis is best for prod.
         # - pause: {}  
