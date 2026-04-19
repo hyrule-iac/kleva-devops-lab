@@ -1,0 +1,16 @@
+spec:
+  # ...
+  strategy:
+    canary:
+      analysis:
+        templates:
+          - templateName: error-rate-check
+        startingStep: 2 # Starting Step , activates at 20%
+        args:
+          - name: service-name
+            value: kleva-dotnet-service
+      steps:
+        - setWeight: 20
+        # Uncomment pause to pause it manually, when deactivated, will do it automatic analysis.
+          # Manual Pause can be used for demos, Auto analysis is best for prod
+        # - pause: {}  

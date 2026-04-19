@@ -21,6 +21,7 @@ resource "kubernetes_namespace" "monitoring" {
   }
 }
 
+
 # Configuration-as-Code: Injecting environment-specific settings via ConfigMap.
 # This decouples infrastructure values from the application runtime for easier maintenance and changes 
 

@@ -32,3 +32,32 @@ resource "helm_release" "grafana" {
     value = "true"
   }
 }
+
+#Argo Rollouts Template
+resource "kubernetes_manifest" "promote_analysis" {
+  manifest = {
+    apiVersion = "argoproj.io/v1alpha1"
+    kind       = "AnalysisTemplate"
+    metadata = {
+      name      = "error-rate-check"
+      namespace = var.app_namespace
+    }
+    spec = {
+      args = [{ name = "service-name" }]
+      metrics = [{
+        name     = "error-rate"
+        successCondition = "result[0] < 0.01" # Success if < 1%
+        interval = "1m"
+        count    = 5 #Check interval set for 5 mins
+        provider = {
+          prometheus = {
+            # Prom URL
+            address = "http://prometheus-operated.monitoring.svc.cluster.local:9090"
+            # .Net Metrics
+            query   = "sum(rate(kleva_http_requests_total{service=\"{{args.service-name}}\",status_code=~\"5.*\"}[2m])) / sum(rate(kleva_http_requests_total{service=\"{{args.service-name}}\"}[2m]))"
+          }
+        }
+      }]
+    }
+  }
+}
