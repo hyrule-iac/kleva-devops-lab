@@ -45,12 +45,12 @@ jobs:
           snyk --version
 
       - name: Snyk Test
-        run: snyk test --all-projects --severity-threshold=high  # ✅ .NET 10 compatible
+        run: snyk test --all-projects --severity-threshold=high  # 
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v5  # ✅ v3.1.0 no existe
+        uses: SonarSource/sonarqube-scan-action@v5 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
