@@ -73,10 +73,7 @@ jobs:
           kubectl apply -f k8s/application/app-rollout.yaml
 
       # 5. Monitoring Stack
-      # ✅ Usamos grafana-config.yaml (tiene datasource + provider + dashboard)
-      # ✅ NO aplicamos grafana.yaml ni grafana-datasource.yaml — duplican grafana-datasource ConfigMap
-      # ✅ NO aplicamos grafana-secret.yaml — Terraform ya lo crea con el password correcto
-      # ✅ NO aplicamos namespace.yaml — Terraform ya crea los namespaces
+      # Using grafana-config.yaml (has datasource + provider + dashboard)
       - name: Apply Monitoring Stack
         run: |
           kubectl apply -f k8s/monitoring/prometheus.yaml
@@ -85,7 +82,14 @@ jobs:
       # 6. Verification & Wait
       - name: Wait for Rollouts
         run: |
-          echo "=== Rollout status ==="
+          echo "=== Pod status ==="
+          kubectl get pods -n app -o wide
+          echo "=== Rollout Describe ==="
+          kubectl argo rollouts describe kleva-dotnet -n app
+          echo "=== Pod Events ==="
+          kubectl get events -n app --sort-by='.lastTimestamp' | tail -20
+
+          kubectl argo rollouts status kleva-dotnet -n app --timeout=300s
           kubectl argo rollouts status kleva-dotnet -n app --timeout=300s
           
           echo "=== Infrastructure status ==="
