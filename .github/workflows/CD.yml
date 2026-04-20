@@ -49,6 +49,7 @@ jobs:
         working-directory: ./terraform
         env: 
           TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+          TF_VAR_grafana_admin_password: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
         run: |
           terraform init
           terraform apply -auto-approve
