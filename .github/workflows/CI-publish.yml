@@ -1,0 +1,41 @@
+# ---------------------------------------------------------------------------------------
+# CI for Publishing Image into GHCR
+# Triggers after CodeQl succeds
+# ---------------------------------------------------------------------------------------
+# Actions
+# ---------------------------------------------------------------------------------------
+# 1.Publish job executes on ubuntu latest with read write permissions  
+# 2.Logs into GHC registry
+# 3.Builds and pusehs the docker images
+# 4.Uses tags to manage image version
+# ---------------------------------------------------------------------------------------
+name: CI Publish Image
+on:
+  workflow_run:
+    workflows: ["codeql"] 
+    types:
+      - completed
+
+jobs:
+  publish:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build & Push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./app
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:sha-${{ github.sha }}

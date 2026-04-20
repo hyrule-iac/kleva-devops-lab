@@ -1,0 +1,44 @@
+# ---------------------------------------------------------------------------------------
+# CI for Code Quality and Security
+# ---------------------------------------------------------------------------------------
+# Triggers on push for any of the main repo branches, runs on ubuntu latest
+# Steps:
+# 1-Fetch Repo code
+# 2-Install .Net 10
+# 3-Restore and builds app
+# 4-Executes Snyk and SonarCloud scans
+# ---------------------------------------------------------------------------------------
+name: CI Quality & Security
+on:
+  push:
+    branches: [ "master", "canary" ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore & Build
+        run: |
+          dotnet restore app/
+          dotnet build app/ --configuration Release --no-restore
+      - name: Test
+        run: dotnet test app/ --no-build
+      - name: Snyk SCA
+        uses: snyk/actions/setup@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: test
+          args: --file=app/kleva-app.csproj --severity-threshold=high
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v3.1.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

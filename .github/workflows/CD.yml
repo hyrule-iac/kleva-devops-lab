@@ -15,7 +15,7 @@ name: CD
 
 on:
   workflow_run:
-    workflows: ["CodeQL"]
+    workflows: ["CI Publish Image"]
     types:
       - completed
 
