@@ -27,16 +27,13 @@ jobs:
       - name: Test
         run: dotnet test app/ --no-build
 
-      # ✅ FIX: setup y run son dos steps SEPARADOS, nunca en uno solo
       - name: Setup Snyk
         uses: snyk/actions/setup@master
 
       - name: Snyk Test
-        run: snyk test --file=app/kleva-app.csproj --severity-threshold=high
+        run: snyk test --all-projects --severity-threshold=high
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-
-      # ✅ FIX: versión correcta de SonarCloud
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v4
         env:
