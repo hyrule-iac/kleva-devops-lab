@@ -27,12 +27,15 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+
       - name: Restore & Build
         run: |
           dotnet restore app/
           dotnet build app/ --configuration Release --no-restore
+
       - name: Test
         run: dotnet test app/ --no-build
+
       - name: Snyk SCA
         uses: snyk/actions/setup@master
         env:
@@ -40,6 +43,7 @@ jobs:
         with:
           command: test
           args: --file=app/kleva-app.csproj --severity-threshold=high
+          
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v3.1.0
         env:
