@@ -124,9 +124,9 @@ jobs:
           echo "=== Debug: Describe pod ==="
           kubectl describe pod -n app -l app=kleva-dotnet | tail -40
 
-          echo "=== Debug: Eventos namespace app ==="
+          echo "=== Debug: Events for namespace app ==="
           kubectl get events -n app --sort-by='.lastTimestamp'
-          kubectl argo rollouts status kleva-dotnet -n app --timeout=400s
+          kubectl argo rollouts status kleva-dotnet -n app --timeout=500s
           kubectl -n monitoring wait --for=condition=available deployment/prometheus --timeout=120s
           kubectl -n monitoring wait --for=condition=available deployment/grafana --timeout=120s
 
