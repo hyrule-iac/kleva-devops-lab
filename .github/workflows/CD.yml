@@ -72,11 +72,12 @@ jobs:
           TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
         run: |
           cd terraform/
-          terraform init
-          terraform apply -auto-approve \
+          terraform init -no-color
+          terraform apply -auto-approve -no-color \
             -var="grafana_admin_password=${{ secrets.GRAFANA_PASS }}" \
             -var="environment=dev"
-
+          echo "=== Debug:post-terraform namespaces  ==="
+          kubectl get ns 
       # -----------------------------------------------------------------------
       # 4. App manifests: ConfigMap + Secret + Argo Rollout.
       #    Namespaces already exist from Terraform, so this is safe.
@@ -84,6 +85,8 @@ jobs:
       
       - name: Apply App Manifests
         run: |
+          echo "=== Debug: Existing Namespaces ===" 
+          kubectl get ns
           kubectl apply -f k8s/configmap.yaml
           kubectl apply -f k8s/secrets.yaml
           kubectl apply -f k8s/application/app-rollout.yaml
