@@ -119,7 +119,7 @@ jobs:
         run: |
           echo "=== Debug: Rollout describe ==="
           kubectl argo rollouts get rollout kleva-dotnet -n app
-          kubectl argo rollouts status kleva-dotnet -n app --timeout=120s
+          kubectl argo rollouts status kleva-dotnet -n app --timeout=300s
           kubectl -n monitoring wait --for=condition=available deployment/prometheus --timeout=120s
           kubectl -n monitoring wait --for=condition=available deployment/grafana --timeout=120s
 
