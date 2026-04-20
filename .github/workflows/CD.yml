@@ -48,6 +48,9 @@ jobs:
       # 3. Infrastructure with Terraform
       - name: Terraform Init & Apply
         working-directory: ./terraform
+        env: 
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+          
         run: |
           terraform init
           terraform apply -auto-approve
