@@ -1,104 +1,46 @@
-# -----------------------------------------------------------------------------------------
-# CD PIPELINE: Continuous Deployment & Orchestration
-# -----------------------------------------------------------------------------------------
-name: CD Deployment
-
+# ---------------------------------------------------------------------------------------
+# CI for Code Quality and Security
+# ---------------------------------------------------------------------------------------
+name: CI Quality & Security
 on:
   workflow_call:
 
-permissions:
+permissions:        
   contents: read
   packages: write
 
 jobs:
-  deploy:
+  validate:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4        # ✅ FIX: v5 no existe
+        with:
+          fetch-depth: 0
 
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4    # ✅ FIX: consistente con v4
+        with:
+          dotnet-version: '10.0.x'
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      # 1. Cluster Setup
-      - name: Install k3d
-        run: curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.6.0 bash
-
-      - name: Create k3d Cluster
+      - name: Restore & Build
         run: |
-          k3d cluster create kleva-cluster \
-            --port "8080:80@loadbalancer" \
-            --wait
+          dotnet restore app/kleva-app.csproj    # ✅ FIX: apuntar al .csproj exacto
+          dotnet build app/kleva-app.csproj --configuration Release --no-restore
 
-      # 2. Argo Rollouts Setup
-      - name: Install Argo Rollouts
-        run: |
-          kubectl create namespace argo-rollouts
-          kubectl apply -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
-          kubectl wait --for=condition=available deployment/argo-rollouts -n argo-rollouts --timeout=120s
-          # Install kubectl plugin
-          curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
-          chmod +x ./kubectl-argo-rollouts-linux-amd64
-          sudo mv ./kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
+      - name: Test
+        run: dotnet test app/ --no-build
 
-      # 3. Infrastructure with Terraform
-      - name: Terraform Init & Apply
-        working-directory: ./terraform
-        env: 
-          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
-          
-        run: |
-          terraform init
-          terraform apply -auto-approve
+      - name: Setup Snyk
+        uses: snyk/actions/setup@master
 
-      # 4. App Manifests & Secrets (CORREGIDO)
-      - name: Deploy Application Manifests
-        run: |
-          # Limpieza preventiva para evitar errores de anotaciones
-          kubectl delete secret ghcr-secret -n app --ignore-not-found
-          kubectl delete secret grafana-secret -n monitoring --ignore-not-found
+      - name: Snyk Test
+        # ✅ FIX: remover --package-manager=nuget, Snyk autodetecta con assets.json presente
+        run: snyk test --file=app/kleva-app.csproj --severity-threshold=high
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-          # Crear secreto para bajar la imagen de GHCR
-          kubectl create secret docker-registry ghcr-secret \
-            --docker-server=ghcr.io \
-            --docker-username=${{ github.actor }} \
-            --docker-password=${{ secrets.GITHUB_TOKEN }} \
-            --namespace=app
-
-          # Crear secreto para Grafana (Password)
-          kubectl create secret generic grafana-secret \
-            --from-literal=admin-password=admin \
-            --namespace=monitoring
-
-          # Aplicar configuraciones y Rollout
-          kubectl apply -f k8s/application/app-config.yaml
-          kubectl apply -f k8s/application/app-secret.yaml
-          kubectl apply -f k8s/application/app-rollout.yaml
-
-      # 5. Monitoring Stack
-      - name: Apply Monitoring Stack
-        run: |
-          kubectl apply -f k8s/monitoring/prometheus.yaml
-          kubectl apply -f k8s/monitoring/grafana-datasource.yaml
-          kubectl apply -f k8s/monitoring/grafana-config.yaml
-
-      # 6. Verification & Wait
-      - name: Wait for Rollouts
-        run: |
-          echo "=== Debug: Rollout status ==="
-          # Esperamos a que los Pods bajen la imagen y pasen el Health Check
-          kubectl argo rollouts status kleva-dotnet -n app --timeout=300s
-          
-          echo "=== Debug: Infrastructure status ==="
-          kubectl -n monitoring wait --for=condition=available deployment/prometheus --timeout=120s
-          kubectl -n monitoring wait --for=condition=available deployment/grafana --timeout=120s
-
-      - name: Verify Final Deployment
-        run: |
-          echo "✅ Deployment completed successfully."
-          kubectl get pods -A
-          kubectl argo rollouts get rollout kleva-dotnet -n app
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v3.1.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
