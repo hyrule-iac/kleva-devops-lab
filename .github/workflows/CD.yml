@@ -1,41 +1,97 @@
-name: CI Quality & Security
+# -----------------------------------------------------------------------------------------
+# CD PIPELINE: Continuous Deployment & Orchestration
+# -----------------------------------------------------------------------------------------
+name: CD Deployment
+
 on:
   workflow_call:
 
-permissions:        
+permissions:
   contents: read
   packages: write
 
 jobs:
-  validate:
+  deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
 
-      - name: Restore & Build
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      # 1. Cluster Setup
+      - name: Install k3d
+        run: curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.6.0 bash
+
+      - name: Create k3d Cluster
         run: |
-          dotnet restore app/kleva-app.csproj
-          dotnet build app/kleva-app.csproj --configuration Release --no-restore
+          k3d cluster create kleva-cluster \
+            --port "8080:80@loadbalancer" \
+            --wait
 
-      - name: Test
-        run: dotnet test app/ --no-build
+      # 2. Argo Rollouts Setup
+      - name: Install Argo Rollouts
+        run: |
+          kubectl create namespace argo-rollouts
+          kubectl apply -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
+          kubectl wait --for=condition=available deployment/argo-rollouts -n argo-rollouts --timeout=120s
+          curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
+          chmod +x ./kubectl-argo-rollouts-linux-amd64
+          sudo mv ./kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
 
-      - name: Setup Snyk
-        uses: snyk/actions/setup@master
+      # 3. Infrastructure with Terraform
+      - name: Terraform Init & Apply
+        working-directory: ./terraform
+        env: 
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+        run: |
+          terraform init
+          terraform apply -auto-approve
 
-      - name: Snyk Test
-        run: snyk test --all-projects --severity-threshold=high
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v4
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      # 4. App Manifests & Secrets
+      - name: Deploy Application Manifests
+        run: |
+          kubectl delete secret ghcr-secret -n app --ignore-not-found
+          kubectl delete secret grafana-secret -n monitoring --ignore-not-found
+
+          kubectl create secret docker-registry ghcr-secret \
+            --docker-server=ghcr.io \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.GITHUB_TOKEN }} \
+            --namespace=app
+
+          kubectl create secret generic grafana-secret \
+            --from-literal=admin-password=admin \
+            --namespace=monitoring
+
+          kubectl apply -f k8s/application/app-config.yaml
+          kubectl apply -f k8s/application/app-secret.yaml
+          kubectl apply -f k8s/application/app-rollout.yaml
+
+      # 5. Monitoring Stack
+      - name: Apply Monitoring Stack
+        run: |
+          kubectl apply -f k8s/monitoring/prometheus.yaml
+          kubectl apply -f k8s/monitoring/grafana-datasource.yaml
+          kubectl apply -f k8s/monitoring/grafana-config.yaml
+
+      # 6. Verification & Wait
+      - name: Wait for Rollouts
+        run: |
+          echo "=== Debug: Rollout status ==="
+          kubectl argo rollouts status kleva-dotnet -n app --timeout=300s
+          
+          echo "=== Debug: Infrastructure status ==="
+          kubectl -n monitoring wait --for=condition=available deployment/prometheus --timeout=120s
+          kubectl -n monitoring wait --for=condition=available deployment/grafana --timeout=120s
+
+      - name: Verify Final Deployment
+        run: |
+          echo "✅ Deployment completed successfully."
+          kubectl get pods -A
+          kubectl argo rollouts get rollout kleva-dotnet -n app
