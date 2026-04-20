@@ -89,8 +89,8 @@ jobs:
           echo "=== Pod Events ==="
           kubectl get events -n app --sort-by='.lastTimestamp' | tail -20
 
-          kubectl argo rollouts status kleva-dotnet -n app --timeout=300s
-          kubectl argo rollouts status kleva-dotnet -n app --timeout=300s
+          kubectl argo rollouts status kleva-dotnet -n app --timeout=600s
+          
           
           echo "=== Infrastructure status ==="
           kubectl -n monitoring wait --for=condition=available deployment/prometheus --timeout=120s
