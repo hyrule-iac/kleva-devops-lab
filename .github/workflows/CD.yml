@@ -45,6 +45,7 @@ jobs:
           sudo mv ./kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
 
       # 3. Infrastructure with Terraform
+      # Terraform creates: namespaces, grafana-secret, grafana helm release, AnalysisTemplate
       - name: Terraform Init & Apply
         working-directory: ./terraform
         env: 
@@ -54,42 +55,41 @@ jobs:
           terraform init
           terraform apply -auto-approve
 
-      # 4. App Manifests & Secrets
+      # 4. App Manifests
+      # ✅ NO recreamos namespaces ni grafana-secret — Terraform ya los maneja
       - name: Deploy Application Manifests
         run: |
+          # Solo el secret de GHCR que Terraform no crea
           kubectl delete secret ghcr-secret -n app --ignore-not-found
-          kubectl delete secret grafana-secret -n monitoring --ignore-not-found
-
           kubectl create secret docker-registry ghcr-secret \
             --docker-server=ghcr.io \
             --docker-username=${{ github.actor }} \
             --docker-password=${{ secrets.GITHUB_TOKEN }} \
             --namespace=app
 
-          kubectl create secret generic grafana-secret \
-            --from-literal=admin-password=admin \
-            --namespace=monitoring
-
-          kubectl apply -f k8s/configmap.yaml 
+          # App manifests
+          kubectl apply -f k8s/configmap.yaml
           kubectl apply -f k8s/secrets.yaml
           kubectl apply -f k8s/application/app-rollout.yaml
 
       # 5. Monitoring Stack
+      # ✅ Usamos grafana-config.yaml (tiene datasource + provider + dashboard)
+      # ✅ NO aplicamos grafana.yaml ni grafana-datasource.yaml — duplican grafana-datasource ConfigMap
+      # ✅ NO aplicamos grafana-secret.yaml — Terraform ya lo crea con el password correcto
+      # ✅ NO aplicamos namespace.yaml — Terraform ya crea los namespaces
       - name: Apply Monitoring Stack
         run: |
           kubectl apply -f k8s/monitoring/prometheus.yaml
-          kubectl apply -f k8s/monitoring/grafana-datasource.yaml
-          kubectl apply -f k8s/monitoring/grafana-config.yaml
+          kubectl apply -f k8s/monitoring/grafana-config.yaml  # datasource + provider + dashboard
 
       # 6. Verification & Wait
       - name: Wait for Rollouts
         run: |
-          echo "=== Debug: Rollout status ==="
+          echo "=== Rollout status ==="
           kubectl argo rollouts status kleva-dotnet -n app --timeout=300s
           
-          echo "=== Debug: Infrastructure status ==="
+          echo "=== Infrastructure status ==="
           kubectl -n monitoring wait --for=condition=available deployment/prometheus --timeout=120s
-          kubectl -n monitoring wait --for=condition=available deployment/grafana --timeout=120s
 
       - name: Verify Final Deployment
         run: |
