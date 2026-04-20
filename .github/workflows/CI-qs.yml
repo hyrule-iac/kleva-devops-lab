@@ -36,8 +36,8 @@ jobs:
       - name: Test
         run: dotnet test app/ --no-build
 
-      - name: Snyk SCA
-        uses: snyk/actions/setup@master
+      - name: Snyk SCA (.NET Scan)
+        uses: snyk/actions/dotnet@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
