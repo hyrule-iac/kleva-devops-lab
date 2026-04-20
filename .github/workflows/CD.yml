@@ -70,8 +70,8 @@ jobs:
             --from-literal=admin-password=admin \
             --namespace=monitoring
 
-          kubectl apply -f k8s/application/app-config.yaml
-          kubectl apply -f k8s/application/app-secret.yaml
+          kubectl apply -f k8s/configmap.yaml 
+          kubectl apply -f k8s/secrets.yaml
           kubectl apply -f k8s/application/app-rollout.yaml
 
       # 5. Monitoring Stack
