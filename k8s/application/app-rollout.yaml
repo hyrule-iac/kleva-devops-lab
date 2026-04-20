@@ -39,7 +39,7 @@ spec:
         - name: ghcr-secret
       containers:
         - name: kleva-dotnet
-          image: ghcr.io/hyrule-iac/kleva-app:latest
+          image: ghcr.io/hyrule-iac/kleva-devops-lab:latest
           ports:
             - containerPort: 80
           env:
