@@ -6,6 +6,11 @@ on:
   push:
     branches: [ "master", "canary" ]
 
+permissions:
+    contents: read
+    packages : write
+    security-events : write
+    actions : read
 jobs:
   # 1. Calidad y Seguridad
   quality:

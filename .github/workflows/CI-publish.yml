@@ -11,7 +11,10 @@
 # ---------------------------------------------------------------------------------------
 name: CI Publish Image
 on:
-  workflow_call:
+ workflow_call:
+permissions:        
+   contents: read
+   packages: write
 jobs:
   publish:
     runs-on: ubuntu-latest
