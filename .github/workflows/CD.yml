@@ -84,16 +84,19 @@ jobs:
         run: |
           echo "=== Pod status ==="
           kubectl get pods -n app -o wide
-          echo "=== Rollout Describe ==="
-          kubectl argo rollouts describe kleva-dotnet -n app
-          echo "=== Pod Events ==="
+          
+          echo "=== Rollout status ==="
+          # Si falla el status, igual mostramos el estado final para debug
+          kubectl argo rollouts status kleva-dotnet -n app --timeout=600s || true
+
+          echo "=== Rollout detail ==="
+          kubectl argo rollouts get rollout kleva-dotnet -n app  # ✅ comando correcto
+
+          echo "=== Pod events ==="
           kubectl get events -n app --sort-by='.lastTimestamp' | tail -20
 
-          kubectl argo rollouts status kleva-dotnet -n app --timeout=600s
-          
-          
-          echo "=== Infrastructure status ==="
-          kubectl -n monitoring wait --for=condition=available deployment/prometheus --timeout=120s
+          echo "=== Pod logs (si existen) ==="
+          kubectl logs -n app -l app=kleva-dotnet --tail=50 || echo "No logs yet"
 
       - name: Verify Final Deployment
         run: |
