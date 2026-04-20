@@ -36,12 +36,13 @@ jobs:
       - name: Test
         run: dotnet test app/ --no-build
 
-      - name: Snyk SCA (.NET Scan)
-        uses: snyk/actions/dotnet@master
+      - name: Setup Snyk
+        uses: snyk/actions/setup@master
+
+      - name: Snyk Test
+        run: snyk test --file=app/kleva-app.csproj --severity-threshold=high --package-manager=nuget
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --file=app/kleva-app.csproj --severity-threshold=high
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v3.1.0
