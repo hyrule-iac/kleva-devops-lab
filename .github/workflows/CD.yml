@@ -97,7 +97,8 @@ jobs:
         run: |
           kubectl apply -f k8s/monitoring/prometheus.yaml
           kubectl apply -f k8s/monitoring/grafana-datasource.yaml
-          kubectl apply -f k8s/monitoring/grafana-config.yaml
+          kubectl apply -f k8s/Monitoring/grafana-secret.yaml
+          kubectl apply -f k8s/monitoring/grafana.yaml
 
       # -----------------------------------------------------------------------
       # 6. Wait for critical pods to be ready before declaring success.
