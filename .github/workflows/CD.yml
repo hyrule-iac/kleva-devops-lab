@@ -14,14 +14,10 @@
 name: CD Deployment
 
 on:
-  workflow_run:
-    workflows: ["CodeQL"]
-    types:
-      - completed
+  workflow_call:
 
 jobs:
   deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
