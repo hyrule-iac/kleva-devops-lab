@@ -12,7 +12,7 @@
 name: CI Publish Image
 on:
   workflow_run:
-    workflows: ["CodeQL"] 
+    workflows: ["CI Quality & Security"] 
     types:
       - completed
 

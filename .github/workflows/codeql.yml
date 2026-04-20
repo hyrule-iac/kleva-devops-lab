@@ -27,7 +27,7 @@ name: CodeQL
 
 on:
   workflow_run:
-    workflows: ["CI Quality & Security"]
+    workflows: ["CI Publish Image"]
     types:
       - completed
 jobs:
