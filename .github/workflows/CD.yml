@@ -1,12 +1,14 @@
 # -----------------------------------------------------------------------------------------
 # CD PIPELINE: Continuous Deployment & Orchestration
-# Trigger: Automated execution upon successful CI completion (Master branch).
+# Trigger: Automated execution upon successful CodeQL completion (Master branch).
 # -----------------------------------------------------------------------------------------
-# Core Principles:
-# 1. Pipeline Integrity: Deployment is gated by CI success to ensure only verified, 
-#    Secure, and tested code reaches the cluster.
-# 2. Infrastructure as Code: Synchronizes application state with Kubernetes 
-#    manifests/Argo Rollouts for automated delivery.
+# Deployment Order:
+# 1. Cluster Setup    : k3d cluster + kubeconfig
+# 2. Namespaces       : kubectl applies namespace.yaml (app + monitoring)
+# 3. Terraform Apply  : Creates namespaces (via module), Grafana (Helm), AnalysisTemplate
+# 4. App Manifests    : ConfigMap, Secret, Argo Rollout
+# 5. Monitoring Stack : Prometheus, Grafana ConfigMaps (datasource + dashboard)
+# 6. Verification     : Confirms all pods and namespaces are healthy
 # -----------------------------------------------------------------------------------------
 
 name: CD
@@ -32,9 +34,11 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # 1. Create K3d Cluster to emulate a real Kubernetes environment for our deployment. 
-      #    This will allow us to test the full deployment process in a local cluster before moving to production.
-      #    Also refactoring the workflow to use Terraform for creating namespaces and ConfigMaps, while keeping kubectl for deploying the application manifests.
+      # -----------------------------------------------------------------------
+      # 1. Spin up a local k3d cluster to emulate a real Kubernetes environment.
+      #    Port 8080 maps to the cluster's load balancer for app access.
+      # -----------------------------------------------------------------------
+    
       - name: Setup k3d Cluster
         run: |
           curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.6.0 bash
@@ -42,10 +46,28 @@ jobs:
           mkdir -p ~/.kube
           k3d kubeconfig get kleva-cluster > ~/.kube/config
 
-      # 2. Terraform : Creates namespaces and ConfigMaps for Grafana (Datasource, Dashboard Provider, and Dashboard JSON)
-      #                This way we can test our Terraform code for infrastructure provisioning while still using kubectl for application deployment, 
-      #                achieving a hybrid approach that allows us to validate both aspects of our deployment process.
+      # -----------------------------------------------------------------------
+      # 2. Install Argo Rollouts controller + kubectl plugin.
+      #    Must exist before applying any Rollout manifests.
+      # -----------------------------------------------------------------------
+      
+      - name: Install Argo Rollouts
+        run: |
+          kubectl create namespace argo-rollouts
+          kubectl apply -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
+          kubectl -n argo-rollouts wait --for=condition=available deployment/argo-rollouts --timeout=120s
 
+          # kubectl plugin for manual promotion commands
+          curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
+          chmod +x kubectl-argo-rollouts-linux-amd64
+          sudo mv kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
+
+      # -----------------------------------------------------------------------
+      # 3. Terraform: Creates namespaces (app + monitoring), deploys Grafana via
+      #    Helm with sidecar autodiscovery, and creates the AnalysisTemplate
+      #    "error-rate-check" that the Argo Rollout will reference.
+      # -----------------------------------------------------------------------
+      
       - name: Terraform Apply
         env:
           TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
@@ -56,17 +78,55 @@ jobs:
             -var="grafana_admin_password=${{ secrets.GRAFANA_PASS }}" \
             -var="environment=dev"
 
-      # 3. KUBECTL: Will apply the application manifests (Secrets, Deployments, Services) to deploy the Kleva application and its monitoring components.
-      #             This allows us to test the actual deployment of our application using kubectl, while still leveraging Terraform for the IaC setup
+      # -----------------------------------------------------------------------
+      # 4. App manifests: ConfigMap + Secret + Argo Rollout.
+      #    Namespaces already exist from Terraform, so this is safe.
+      # -----------------------------------------------------------------------
       
       - name: Apply App Manifests
         run: |
-
+          kubectl apply -f k8s/configmap.yaml
           kubectl apply -f k8s/secrets.yaml
+          kubectl apply -f k8s/application/app-rollout.yaml
 
-      # 4. Final verification step to check that all resources are created successfully and the application is running as expected in the cluster.
+      # -----------------------------------------------------------------------
+      # 5. Monitoring stack: Prometheus (full stack) + Grafana ConfigMaps.
+      #    Sidecars in Grafana will autodiscover datasource + dashboard via labels.
+      # -----------------------------------------------------------------------
+      
+      - name: Apply Monitoring Stack
+        run: |
+          kubectl apply -f k8s/monitoring/prometheus.yaml
+          kubectl apply -f k8s/monitoring/grafana-datasource.yaml
+          kubectl apply -f k8s/monitoring/grafana-config.yaml
+
+      # -----------------------------------------------------------------------
+      # 6. Wait for critical pods to be ready before declaring success.
+      # -----------------------------------------------------------------------
+      
+      - name: Wait for Rollouts
+        run: |
+          kubectl -n app wait --for=condition=available deployment/kleva-dotnet --timeout=120s || \
+            kubectl -n app rollout status rollout/kleva-dotnet --timeout=120s
+          kubectl -n monitoring wait --for=condition=available deployment/prometheus --timeout=120s
+          kubectl -n monitoring wait --for=condition=available deployment/grafana --timeout=120s
+
+      # -----------------------------------------------------------------------
+      # 7. Final verification: print cluster state for pipeline logs.
+      # -----------------------------------------------------------------------
+      
       - name: Verify Deployment
         run: |
+          echo "=== Namespaces ==="
           kubectl get ns
-          kubectl get pods -A
-          echo "Hybrid deployment (Terraform + Kubectl) was successfully completed."
+
+          echo "=== Pods (app) ==="
+          kubectl get pods -n app
+
+          echo "=== Pods (monitoring) ==="
+          kubectl get pods -n monitoring
+
+          echo "=== Argo Rollout Status ==="
+          kubectl argo rollouts get rollout kleva-dotnet -n app
+
+          echo "✅ Hybrid deployment (Terraform + Kubectl + Argo Rollouts) completed successfully."
