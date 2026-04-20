@@ -97,6 +97,7 @@ jobs:
 
           kubectl apply -f k8s/configmap.yaml
           kubectl apply -f k8s/secrets.yaml
+          kubectl -n app get secret ghcr-secret
           kubectl apply -f k8s/application/app-rollout.yaml
 
       # -----------------------------------------------------------------------
@@ -119,7 +120,7 @@ jobs:
         run: |
           echo "=== Debug: Rollout describe ==="
           kubectl argo rollouts get rollout kleva-dotnet -n app
-          kubectl argo rollouts status kleva-dotnet -n app --timeout=300s
+          kubectl argo rollouts status kleva-dotnet -n app --timeout=350s
           kubectl -n monitoring wait --for=condition=available deployment/prometheus --timeout=120s
           kubectl -n monitoring wait --for=condition=available deployment/grafana --timeout=120s
 
