@@ -11,7 +11,7 @@
 # 6. Verification     : Confirms all pods and namespaces are healthy
 # -----------------------------------------------------------------------------------------
 
-name: CD
+name: CodeQL
 
 on:
   workflow_run:
