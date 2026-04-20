@@ -44,6 +44,11 @@ jobs:
           k3d cluster create kleva-cluster --port "8080:80@loadbalancer"
           mkdir -p ~/.kube
           k3d kubeconfig get kleva-cluster > ~/.kube/config
+          kubectl create secret docker-registry ghcr-secret \
+          --docker-server=ghcr.io \
+          --docker-username=${{ github.actor }} \
+          --docker-password=${{ secrets.GITHUB_TOKEN }} \
+          --namespace=app || true  
 
       # -----------------------------------------------------------------------
       # 2. Install Argo Rollouts controller + kubectl plugin.
@@ -87,6 +92,13 @@ jobs:
         run: |
           echo "=== Debug: Existing Namespaces ===" 
           kubectl get ns
+          
+          kubectl create secret docker-registry ghcr-secret \
+          --docker-server=ghcr.io \
+          --docker-username=${{ github.actor }} \
+          --docker-password=${{ secrets.GITHUB_TOKEN }} \
+          --namespace=app
+
           kubectl apply -f k8s/configmap.yaml
           kubectl apply -f k8s/secrets.yaml
           kubectl apply -f k8s/application/app-rollout.yaml
