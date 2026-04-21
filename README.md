@@ -1,52 +1,58 @@
-![CI](https://github.com/hyrule-iac/kleva-devops-lab/actions/workflows/CI.yml/badge.svg)
-![CodeQL](https://github.com/hyrule-iac/kleva-devops-lab/actions/workflows/codeql.yml/badge.svg)
+# 🚀 Kleva DevOps Lab
 
-# 🚀 Kleva DevOps Lab: Cloud-Native Microservices Platform
-A high-availability, observable microservices architecture built on **.NET Core**, orchestrated by **Kubernetes (k3d)**, and managed through **HashiCorp Terraform (IaC)**.
-This is a cloud and GitOps-driven platform designed for rapid development, deployment, and monitoring of microservices in a scalable environment.
+This repository contains the complete infrastructure and Continuous Delivery lifecycle for **Kleva**, a Cloud-Native .NET 10 application. The project emulates a real-world production environment using **Pipeline Orchestration**, **Infrastructure as Code (IaC)**, and **Progressive Delivery** strategies.
 
-## 🏛 Architecture Overview
-The platform follows a modular design pattern, separating infrastructure concerns from application logic.
+## 🏗️ System Architecture
 
-### 1. Infrastructure as Code (IaC)
-Managed via **HCP Terraform (Cloud)** using a **CLI-driven workflow**.
-* **Provider Layer:** Defines `kubernetes` and `helm` providers to bridge the gap between cloud state and local execution.
-* **State Management:** Remote backend ensures team collaboration and state locking.
-* **Resource Orchestration:** Automated creation of `app` and `monitoring` namespaces and Grafana deployment via Helm.
+The entire ecosystem is deployed ephemerally in each run to ensure immutability and reproducibility.
 
-### 2. Kubernetes Manifests Logic
-Our manifests are organized by responsibility to ensure a clean **GitOps** flow:
+* **Cluster:** k3d (Kubernetes in Docker) as the local execution environment.
+* **IaC:** Terraform with state management in **HCP Terraform**.
+* **CI:** GitHub Actions with reusable workflows and centralized orchestration.
+* **CD:** Argo Rollouts for advanced deployment strategies (**Canary**).
+* **Observability:** Automated Prometheus & Grafana stack.
 
-* **`k8s/namespace.yaml`**: Standardizes the logical isolation.
-* **`k8s/deployment.yaml`**: Handles the .NET Core lifecycle, resource limits (CPU/Memory), and rolling update strategies.
-* **`k8s/service.yaml`**: Exposes the application internally.
-* **`k8s/grafana-config.yaml`**: Implements a **Sidecar Pattern**.By using labeled `ConfigMaps`, we dynamically inject Prometheus Datasources and JSON Dashboards 
-                                 into Grafana without restarting the pod.
+## 🛡️ DevSecOps: The Quality Pipeline
 
-## 🛠 CI/CD Pipeline Flow
-The automation is split into two specialized workflows:
+The pipeline implements a "Shift Left Security" model to ensure code and dependency integrity:
 
-1.  **Continuous Integration (CI):** * Triggered on every Push/PR.
-    * Executes `dotnet build` and `unit tests`.
-    * **Static Analysis:** Integrated with **SonarCloud** (using `sonar-project.properties`) to enforce a Quality Gate.
-    * **Security:** **Snyk** scans for vulnerabilities in both code and the `Dockerfile`.
+1. **SAST (Static Application Security Testing):** Static code analysis using **CodeQL**.
+2. **SCA (Software Composition Analysis):** NuGet dependency scanning via **Snyk** (Severity Threshold: High).
+3. **Code Quality:** **SonarCloud** integration for bug detection and code smell analysis.
+4. **Container Security:** Automated builds and publishing to **GHCR** (GitHub Container Registry) using authenticated `imagePullSecrets`.
 
-2.  **Continuous Deployment (CD):**
-    * Triggered only upon successful completion of the CI pipeline on the `master` branch.
-    * **IaC Execution:** Runs `terraform apply` to ensure the environment is ready.
-    * **Stateful Deployment:** Uses `kubectl apply` for application manifests, ensuring the latest Docker image is running in the `app` namespace.
+## 🚀 Deployment Strategy (Canary)
 
-## 📊 Observability Stack
-The platform implements a full monitoring loop:
-* **Prometheus:** Scrapes metrics from the .NET application.
-* **Grafana:** Visualizes performance data. 
-* **Accessing the Dashboards:**
-    ```bash
-    # Port-forward to access Grafana locally
-    kubectl port-forward svc/grafana -n monitoring 3000:80
-    ```
+Using **Argo Rollouts**, we minimize the "blast radius" of new releases:
 
-## 🛡 Security & Quality
-* **Project Key:** `hyrule-iac_kleva-devops-lab`
-* **Quality Gate:** Code coverage and security hotspots are monitored via SonarCloud.
-* **Secrets Management:** Sensitive data (like `grafana_admin_password`) is injected at runtime via GitHub Secrets and HCP Terraform variables, never hardcoded.
+* **Canary Analysis:** Traffic is shifted progressively to the new version.
+* **Automated Rollback:** If Liveness/Readiness probes fail or Prometheus metrics detect anomalies, the system automatically reverts to the stable version.
+
+## 📊 Observability & Monitoring
+
+The lab includes a pre-configured monitoring stack injected via ConfigMaps:
+
+* **Prometheus:** Auto-discovery of application pods via annotations.
+* **Grafana:** Automated dashboard provisioning to visualize **Golden Signals** (Latency, Traffic, Errors, and Saturation).
+
+## 🛠️ Prerequisites
+
+* **HCP Terraform Token:** Configured as `TF_API_TOKEN` in GitHub Secrets.
+* **Snyk Token:** Configured as `SNYK_TOKEN`.
+* **GitHub Token:** The pipeline uses the built-in `GITHUB_TOKEN` with `packages:write` permissions for GHCR access.
+
+## 📁 Project Structure
+
+```bash
+├── .github/workflows/    # Orchestrator & Reusable Workflows
+├── app/                  # Kleva Source Code (.NET 10)
+├── terraform/            # Infrastructure modules (Namespaces, Helm, RBAC)
+├── k8s/
+│   ├── application/      # Argo Rollout, Service, and Ingress manifests
+│   └── monitoring/       # Prometheus & Grafana configurations
+└── README.md
+```
+
+***
+**Developed by Aldo Raul Sanchez Estrada** *Senior Cloud Engineer | Azure & DevOps Specialist*
+***
