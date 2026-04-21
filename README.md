@@ -44,12 +44,44 @@ The lab includes a pre-configured monitoring stack injected via ConfigMaps:
 ## 📁 Project Structure
 
 ```bash
-├── .github/workflows/    # Orchestrator & Reusable Workflows
-├── app/                  # Kleva Source Code (.NET 10)
-├── terraform/            # Infrastructure modules (Namespaces, Helm, RBAC)
-├── k8s/
-│   ├── application/      # Argo Rollout, Service, and Ingress manifests
-│   └── monitoring/       # Prometheus & Grafana configurations
+├── .github/workflows/   # Contains Github Actions Pipelines
+    ├── CD.ym
+    ├── CI-publish.yml
+    ├── CI-QS.yml
+    ├── CodeQL.yml
+    ├── Orchestrator.yml
+├── app/   # Application files
+    ├── Dockerfile
+    ├── Kleva-app.csproj
+    ├── Program.cs
+    ├── packages.lock.json    
+├── k8s/            # K8s configuration
+    ├── application/
+        ├── app-rollout.yaml
+    ├── monitoring/  # Grafana and Prometheus
+        ├── grafana-datasource.yaml
+        ├── grafana-secret.yaml
+        ├── prometheus.yaml
+    ├── configmap.yaml
+    ├── grafana-config.yaml
+    ├── namespace.yaml
+    ├── secrets.yaml
+├── terraform/  # Terraform will create cluster, install Argo and Helm
+    ├── modules/
+        ├── k8s/
+            ├── main.tf
+            ├── outputs.tf
+            ├── variables.tf
+        ├── monitoring/
+            ├── main.tf
+            ├── outputs.tf
+            ├── variables.tf
+    ├── main.tf
+    ├── variables.tf
+    ├── Outputs.tf
+    ├── terraform.tfvars            # Infrastructure modules (Namespaces, Helm, RBAC)      # Prometheus & Grafana configurations
+├── sonar-project.properties
+├── .gitignore
 └── README.md
 ```
 
