@@ -1,0 +1,171 @@
+# -----------------------------------------------------------------------------------------
+# ARGO ROLLOUT: Canary Deployment Strategy for Kleva .NET App
+# -----------------------------------------------------------------------------------------
+# Flow:
+# 1. New version is pushed → Rollout starts canary at 20% traffic.
+# 2. At step 2, AnalysisRun "error-rate-check" activates automatically.
+#    It queries Prometheus every 1m for 5 checks — success threshold: <1% 5xx errors.
+# 3. If analysis passes → Rollout auto-promotes to 100% traffic.
+#    If analysis fails  → Rollout auto-aborts and rolls back to stable version.
+# -----------------------------------------------------------------------------------------
+
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: kleva-dotnet
+  namespace: app
+  labels:
+    app: kleva-dotnet
+    environment: dev
+spec:
+  replicas: 3
+  revisionHistoryLimit: 2
+
+  selector:
+    matchLabels:
+      app: kleva-dotnet
+
+  template:
+    metadata:
+      labels:
+        app: kleva-dotnet
+      annotations:
+        # Prometheus autodiscovery — matches the scrape config in prometheus.yaml
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: kleva-dotnet
+          image: ghcr.io/hyrule-iac/kleva-devops-lab:latest
+          ports:
+            - containerPort: 80
+          env:
+            # Non-sensitive config from ConfigMap
+            - name: ASPNETCORE_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: kleva-app-config
+                  key: ASPNETCORE_ENVIRONMENT
+            - name: APP_VERSION
+              valueFrom:
+                configMapKeyRef:
+                  name: kleva-app-config
+                  key: APP_VERSION
+            # Sensitive config from Secret
+            - name: APP_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kleva-app-secret
+                  key: APP_SECRET_KEY
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"
+
+  strategy:
+    canary:
+      # -----------------------------------------------------------------------
+      # AnalysisTemplate reference — defined by Terraform (main.tf)
+      # Activates at step index 2 (after 20% weight is set)
+      # -----------------------------------------------------------------------
+      analysis:
+        templates:
+          - templateName: error-rate-check
+        startingStep: 2
+        args:
+          - name: service-name
+            value: kleva-dotnet-service
+
+      # -----------------------------------------------------------------------
+      # Canary Steps
+      # Step 0: Send 20% of traffic to canary pods
+      # Step 1: Pause 30s to let metrics warm up before analysis kicks in
+      # Step 2: AnalysisRun starts here (startingStep: 2)
+      #         Checks error rate every 1m for 5 iterations
+      #         Pass → auto-promote to 100%
+      #         Fail → auto-rollback to stable
+      # -----------------------------------------------------------------------
+      steps:
+        - setWeight: 20
+        - pause:
+            duration: 30s   # Warm-up window — remove for instant analysis start
+        # Analysis activates here automatically (startingStep: 2)
+        # Uncomment the line below to require manual promotion instead of auto:
+        # - pause: {}
+
+---
+# -----------------------------------------------------------------------------------------
+# SERVICE: Stable traffic (points to stable pods only during canary)
+# -----------------------------------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: kleva-dotnet-service
+  namespace: app
+spec:
+  selector:
+    app: kleva-dotnet
+  ports:
+    - port: 80
+      targetPort: 80
+  type: ClusterIP
+
+---
+# -----------------------------------------------------------------------------------------
+# SERVICE: Canary traffic (points to canary pods for weighted routing)
+# -----------------------------------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: kleva-dotnet-service-canary
+  namespace: app
+spec:
+  selector:
+    app: kleva-dotnet
+  ports:
+    - port: 80
+      targetPort: 80
+  type: ClusterIP
+
+---
+# -----------------------------------------------------------------------------------------
+# INGRESS: Routes external traffic through k3d load balancer
+# -----------------------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kleva-ingress
+  namespace: app
+  annotations:
+    # Argo Rollouts uses these annotations for weighted canary routing
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "20"
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kleva-dotnet-service
+                port:
+                  number: 80

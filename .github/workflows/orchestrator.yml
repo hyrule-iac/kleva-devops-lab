@@ -1,0 +1,36 @@
+#------------------------------------------------------
+# This Pipeline is to handle the order of the rest of the workflows
+name: Main Pipeline Orquestador
+
+on:
+  push:
+    branches: [ "master", "canary" ]
+
+permissions:
+    contents: read
+    packages : write
+    security-events : write
+    actions : read
+jobs:
+  # 1. Calidad y Seguridad
+  quality:
+    uses: ./.github/workflows/CI-qs.yml
+    secrets: inherit # Pasa los tokens automáticamente
+
+  # 2. Publicación (Solo si quality pasa)
+  publish:
+    needs: quality
+    uses: ./.github/workflows/CI-publish.yml
+    secrets: inherit
+
+  # 3. CodeQL (Solo si publish pasa)
+  security-deep:
+    needs: publish
+    uses: ./.github/workflows/codeql.yml
+    secrets: inherit
+
+  # 4. Despliegue (Solo si security pasa)
+  deploy:
+    needs: security-deep
+    uses: ./.github/workflows/CD.yml
+    secrets: inherit
